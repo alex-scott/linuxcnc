@@ -111,6 +111,13 @@ linuxcnc (2.9.0~pre0+git20220224.3ba0951743-1) unstable; urgency=medium
 
   * Initial upload that was checked by FTPmasters
 
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Tue, 13 Dec 2022 19:42:09 +0300
+
+linuxcnc (1:2.8.4nyx36) buster; urgency=low
+
+  * merge, yao2 encoder velocity bug fix
+
+
  -- Sebastian Kuzminsky <seb@highlab.com>  Fri, 25 Feb 2022 18:40:12 +0100
 
 linuxcnc (1:2.8.4) buster; urgency=medium
@@ -181,6 +188,18 @@ linuxcnc (1:2.8.3) buster; urgency=low
 
  -- andypugh <andy@bodgesoc.org>  Tue, 09 Aug 2022 22:13:13 +0100
 
+linuxcnc (1:2.8.2nyx34) buster; urgency=low
+
+  * increased HAL_SIZE from 85 to 200 in hal_priv.h
+
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Fri, 22 Jul 2022 00:03:15 +0300
+
+linuxcnc (1:2.8.2nyx33) buster; urgency=low
+
+  * initial support for mds3 MDS-D/E
+
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Fri, 19 Mar 2021 04:10:21 +0300
+
 linuxcnc (1:2.8.2) buster; urgency=low
 
   * gladevcp: Numerous Updates
@@ -224,6 +243,41 @@ linuxcnc (1:2.8.2) buster; urgency=low
   * Revert bad change inside driver XHC-WHB04B-6 lcnc 2.8
 
  -- andypugh <andy@bodgesoc.org>  Sun, 20 Jun 2021 18:48:30 +0100
+
+linuxcnc (1:2.8.1nyx30) buster; urgency=low
+
+  * nyx3 - YAO2, YEX3, RTAI5 support
+
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Fri, 19 Mar 2021 04:10:21 +0300
+
+linuxcnc (1:2.8.1nyx17) buster; urgency=low
+
+  * nyxq pll extra arg
+  * removed python-serial dep for wheezy
+  * nyx.hal: split the nyx.0 function into nyx.0.rd/nyx.0.wr
+
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Mon, 1 Feb 2021 19:54:05 +0300
+
+linuxcnc (1:2.8.1nyx16) buster; urgency=low
+
+  * YI16/YO16 number of i/o bug fix
+  * split nyx.0 func into rd() and wr()
+  * merged upstrem 2.8.1
+  * encoder velocity is now signed
+  * multiboard support in uspace
+  * encoder zero speed fix
+  * J3/J4 digital outputs support
+  * SSCNET III/H and MR-J4 support
+  * merged upstream 2.8.0
+  * z-index homing for ssc3, mtl
+  * new servo params
+  * nyx 2.4
+  * removed nyxp, moved .par parser to the nyx module
+  * mechatrolink params
+  * mdssp comp
+  * merged with 2.8 branch
+
+ -- Dmitry Yurtaev <dmitry@yurtaev.com>  Thu, 17 Dec 2020 06:10:12 +0300
 
 linuxcnc (1:2.8.1) buster; urgency=low
 

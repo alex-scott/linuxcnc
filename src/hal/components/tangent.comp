@@ -1,0 +1,67 @@
+/*
+   taqngent.comp
+
+   Copyright (C) 2018 Dmitry Yurtaev (dmitry@yurtaev.com)
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2 of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the program; if not, write to the Free
+   Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+   MA 02110-1301 USA.
+ */
+
+component tangent "Output trajectory tangent angle in degrees";
+pin  in float x;
+pin  in float y;
+pin  in   bit follow;
+pin out float a;
+pin out float a360;
+pin  in   bit homed;
+pin  in   bit enable;
+
+variable double xo;
+variable double yo;
+
+function _;
+license "GPL"; // indicates GPL v2 or later
+;;
+
+#include "rtapi_math.h"
+
+FUNCTION(_) {
+	double dx, dy, a1;
+
+	if (!homed) {
+		a = 0;	// zero offset during homing
+		xo = x;
+		yo = y;
+	} else if (enable) {
+		dx = x - xo;
+		dy = y - yo;
+		if (fabs(dx) > 1e-2 || fabs(dy) > 1e-2) {
+			// wait for significant change before orienting
+			a1 = atan2(dy, dx) * (180.0 / M_PI);
+			if (follow) {
+				while (a1 > a + 180.0) a1 -= 360.0;
+				while (a1 < a - 180.0) a1 += 360.0;
+			}
+			a = a1;
+			xo = x;
+			yo = y;
+		}
+	} else {	// update current position
+		xo = x;
+		yo = y;
+	}
+	a360 = fmod(a, 360);
+	if (a360 < 0) a360 += 360;
+}

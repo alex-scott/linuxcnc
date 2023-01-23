@@ -43,7 +43,8 @@ Build-Depends:
     tcl@TCLTK_VERSION@-dev,
     tclx,
     tk@TCLTK_VERSION@-dev,
-    yapps2
+    yapps2,
+	libpci-dev
 Build-Depends-Indep:
     @DOC_DEPENDS@,
 Standards-Version: 4.6.1

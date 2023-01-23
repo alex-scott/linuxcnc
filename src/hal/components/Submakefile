@@ -13,6 +13,7 @@ ifeq ($(BUILD_SYS),uspace)
 COMP_DRIVERS += hal/drivers/serport.comp
 COMP_DRIVERS += hal/drivers/mesa_7i65.comp
 COMP_DRIVERS += hal/drivers/mesa_uart.comp
+COMP_DRIVERS += hal/drivers/nyx.comp
 else
 COMP_DRIVERS := $(wildcard hal/drivers/*.comp)
 endif
