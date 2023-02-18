@@ -26,7 +26,9 @@ option userspace no;
 
 pin in signed jog-selector;
 pin in signed feed-selector;
-pin in signed jog-encoder;
+pin in signed jog-mpg-input;
+// x=0, y=1 and so on -1 - no axis selected
+pin in signed active-axis;
 pin in bit jog-sw; // encoder
 
 pin in bit btn-jog;
@@ -40,6 +42,12 @@ pin out signed   jog-counts;
 pin out bit   jog-enable-# [5];
 
 pin out signed feed-override;
+
+//pin out signed debug;
+//pin out signed debug_prev;
+
+// divide mpg encoder input by this value, may change sign here too
+param rw signed jog_mpg_input_div = 2;
 
 function _;
 license "GPL"; // indicates GPL v2 or later
@@ -55,10 +63,11 @@ FUNCTION(_) {
     static int btn_minus_prev[5] = { 0, 0, 0, 0, 0};
     static int btn_plus_prev[5] = { 0, 0, 0, 0, 0};
     static int btn_pressed_at = 0;
-
+    static int prev_mpg_val = 0;
 
     #define um(x) (x/1000.0F)
     #define BTN_PERIOD_REPEAT 100
+    #define AXIS_COUNT 5
 
     static float override_value[24] = { 0, 2, 4, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120,
                 140, 160, 180, 200, 250, 300 };
@@ -70,9 +79,9 @@ FUNCTION(_) {
 
     jog_vel_mode = 0;
     switch (jog_selector) {
-        case 12: jog_scale =   um(1000); jog_vel_mode = 1; break;
-        case 13: jog_scale =    um(100); jog_vel_mode = 1; break;
-        case 14: jog_scale =     um(10); jog_vel_mode = 1; break;
+        case 12: jog_scale =   um(100); jog_vel_mode = 1; break;
+        case 13: jog_scale =    um(10); jog_vel_mode = 1; break;
+        case 14: jog_scale =     um(1); jog_vel_mode = 1; break;
 
         case 15: jog_scale =     um(1);  break;
         case 16: jog_scale =    um(10);  break;
@@ -82,12 +91,26 @@ FUNCTION(_) {
         case 20: jog_scale = 0.0; return; // jog symbol
     }
 
+    for (int i=0;i<AXIS_COUNT;i++) {
+        jog_enable(i) = 0;
+    }
 
+    int mpg_val = jog_mpg_input_div ? jog_mpg_input / jog_mpg_input_div : jog_mpg_input;
+    int mpg_diff = mpg_val - prev_mpg_val;
+    if ((mpg_diff > 64) || (mpg_diff < -64)) { // unlikely one can drive mpg so fast, so that is some fixed startup value or an error
+        mpg_diff = 0;
+    }
+    prev_mpg_val = mpg_val;
+
+    if (mpg_diff && (active_axis>=0) && (active_axis < AXIS_COUNT)) {
+        jog_counts += mpg_diff;
+        jog_enable(active_axis) = 1;
+        return;
+    }
 
     int pressed = 0;
-    for (int i=0;i<5;i++) {
-        jog_enable(i) = 0;
-        if (jog_vel_mode) {
+    for (int i=0;i<AXIS_COUNT;i++) {
+        if (jog_vel_mode ) {
             pressed = pressed || btn_plus(i) || btn_minus(i);
             if (btn_plus(i) && (!btn_pressed_at || (btn_pressed_at > BTN_PERIOD_REPEAT ))) {
                 jog_counts++;
