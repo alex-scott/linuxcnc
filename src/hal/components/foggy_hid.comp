@@ -35,6 +35,20 @@ pin in bit btn-jog;
 pin in bit btn-minus-# [5];
 pin in bit btn-plus-# [5];
 
+// beep on the signal front
+pin in bit beep;
+// 0 -> off, 1-blink fast, 2-blink slow, 3-on
+pin in unsigned led;
+
+//#        0,  // kana | compose
+//#        200,  //  0   1
+//#        800,  //  1   0
+//#        0xFFFF, // 1  1
+//#            if (kbd_leds & KEYBOARD_LED_SCROLLLOCK) { Beep::beep(); }
+// beep
+pin out bit led-compose;
+pin out bit led-kana;
+pin out bit led-scroll;
 
 pin out float jog-scale;
 pin out bit   jog-vel-mode;
@@ -64,19 +78,38 @@ FUNCTION(_) {
     static int btn_plus_prev[5] = { 0, 0, 0, 0, 0};
     static int btn_pressed_at = 0;
     static int prev_mpg_val = 0;
+    static int prev_beep = 0;
 
     #define um(x) (x/1000.0F)
     #define BTN_PERIOD_REPEAT 100
     #define AXIS_COUNT 5
 
-    static float override_value[24] = { 0, 2, 4, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120,
-                140, 160, 180, 200, 250, 300 };
+    /******************  beep and leds *********************************/
+
+    led_scroll = !prev_beep && beep; // front only
+    prev_beep = beep;
+    led_kana = led & 0x01;
+    led_compose = led & 0x02;
+
+    /******************  feed selector *********************************/
+
+
+//        static float override_value[24] = {
+//            0.0, 0.02, 0.04, 0.1, 0.20, 0.30, 0.40,
+//                    0.50, 0.60, 0.70, 0.80, 0.90, 1.000, 1.10, 1.20,
+//                    1.40, 1.60, 1.80, 2.00, 2.50, 3.00 };
+    static int override_value[24] = {
+            0, 2, 4, 10, 20, 30, 40,
+            50, 60, 70, 80, 90, 100, 110, 120,
+            140, 160, 180, 200, 250, 300
+    };
     if ((feed_selector >= 0 ) && (feed_selector <= 21)) {
-        feed_override = override_value[feed_selector];
+        feed_override = override_value[feed_selector] ;
     } else {
-        feed_override = 0;
+        feed_override = 100;
     }
 
+    /******************  jog selector *********************************/
     jog_vel_mode = 0;
     switch (jog_selector) {
         case 12: jog_scale =   um(100); jog_vel_mode = 1; break;
