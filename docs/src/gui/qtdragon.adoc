@@ -57,7 +57,7 @@ In the section '[DISPLAY]' change the 'DISPLAY' line to read:
 * `qtdragon` for a small version
 * `qtdradon_hd` for the large version.
 
-You can add `-d` or `-v` for debug output to the terminal.
+You can add `-v`, `-d`, '-i', or '-q' for verbose, debug, info or quiet (respectably) output to the terminal.
 
 [source,{ini}]
 ----
@@ -130,7 +130,7 @@ ANGULAR_INCREMENTS = 1, 5, 10, 30, 45, 90, 180, 360
 
 === Jog speed
 
-Set jog speed controls (in units per minute)
+Set jog speed controls (in units per second)
 
 [source,{ini}]
 ----
@@ -138,6 +138,9 @@ Set jog speed controls (in units per minute)
 MIN_LINEAR_VELOCITY     = 0
 MAX_LINEAR_VELOCITY     = 60.00
 DEFAULT_LINEAR_VELOCITY = 50.0
+DEFAULT_ANGULAR_VELOCITY = 10
+MIN_ANGULAR_VELOCITY = 1
+MAX_ANGULAR_VELOCITY = 360
 ----
 
 === User message dialog system
@@ -160,11 +163,11 @@ MESSAGE_PINNAME = oktest
 
 You can embed QtVCP Virtual Control Panels into the QtDragon or QtDragon_hd screen. +
 These panels can be either user built or builtin <<cha:qtvcp:panels,QtVCP Panels>>. +
-The `TAB_NAME` entry will used as the title for the new tab. +
-Tab `TAB_LOCATION` options include: `tabWidget_utilities` and `tabWidget_setup`.
-See QtVCP/VCP panels for other available builtin panels.
-
-This sample adds a builtin panel; a graphical animated machine using the vismach library.
+See QtVCP/VCP panels for other available builtin panels. +
+The `EMBED_TAB_NAME` entry will used as the title for the new tab.(must be unique) +
+Tab `EMBED_TAB_LOCATION` options include: `tabWidget_utilities`, `tabWidget_setup` and `stackedWidget_mainTab`. +
+Tab `EMBED_TAB_COMMAND' specifies what embed-able program to run, including any of it's command line options. + 
+This sample adds a builtin panel, a graphical animated machine using the vismach library, to the utilities tab.
 
 [source,{ini}]
 ----
@@ -172,6 +175,35 @@ This sample adds a builtin panel; a graphical animated machine using the vismach
 EMBED_TAB_NAME = Vismach demo
 EMBED_TAB_COMMAND = qtvcp vismach_mill_xyz
 EMBED_TAB_LOCATION = tabWidget_utilities
+----
+
+If using the `tabWidget_utilities` or `tabWidget_setup` locations, an extra tab will appear with the panel. +
+If using 'stackedWidget_mainTab', a button labelled 'User" will appear. Pressing this button will cycle 
+through displaying all available panels (specified for this location) on the main tab area.
+
+=== Subroutine Paths
+If using NGCGUI, remap or custom M codes routines, linuxcnc needs to know where to look for the files. +
+
+[source,{ini}]
+----
+[RS274NGC]
+SUBROUTINE_PATH = :~/linuxcnc/nc_files/examples/ngcgui_lib:~/linuxcnc/nc_files/examples/ngcgui_lib/utilitysubs; \
+~/linuxcnc/nc_files/examples/probe/basic_probe/macros:~/linuxcnc/nc_files/examples/remap-subroutines: \
+~/linuxcnc/nc_files/examples/ngcgui_lib/remap_lib
+----
+
+Qtvcp's NGCGUI program also need to know where to open for subroutine selection and pre-selection.
+
+[source,{ini}]
+----
+[DISPLAY]
+# NGCGUI subroutine path.
+# Thr path must also  be in [RS274NGC] SUBROUTINE_PATH
+NGCGUI_SUBFILE_PATH = ~/linuxcnc/nc_files/examples/ngcgui_lib
+# pre selected programs tabs
+# specify filenames only, files must be in the NGCGUI_SUBFILE_PATH
+NGCGUI_SUBFILE = slot.ngc
+NGCGUI_SUBFILE = qpocket.ngc
 ----
 
 === Preview Control
@@ -233,13 +265,58 @@ Comment/uncomment which ever you prefer.
 * 'Versa probe' is a QtVCP ported version of a popular GladeVCP probing panel.
 * 'Basic Probe' is a QtVCP ported version based on the third party basic probe screen.
 
-Both perform similar probing routines.
+Both perform similar probing routines, though Versa probe optionally handles auto tool measurement.
 
 [source,{ini}]
 ----
 [PROBE]
 #USE_PROBE = versaprobe
 USE_PROBE = basicprobe
+----
+
+=== Abort detection
+When using qtdragon's probing routines, it's important to detect a user abort request. +
+By default, linuxcnc does not report an abort in a useful way for the probe routines. +
+You need to add a ngc file to print out an error that can be detected.
+
+
+[source,{ini}]
+----
+[RS274NGC]
+# on abort, this ngc file is called. required for basic/versa probe routines. +
+ON_ABORT_COMMAND=O <on_abort> call
+----
+
+This example code will send a message on abort. The probe routines can detect this.
+
+[source,{ngc}]
+----
+o<on_abort> sub
+
+o100 if [#1 eq 5]
+    (machine on)
+o100 elseif [#1 eq 6]
+    (machine off)
+o100 elseif [#1 eq 7]
+    (estopped)
+o100 elseif [#1 eq 8]
+    (msg,Process Aborted)
+o100 else
+    (DEBUG,Abort Parameter is %d[#1])
+o100 endif
+
+o<on_abort> endsub
+m2
+----
+
+=== Startup codes
+You should set default M/G code for start up. These will be overridden by running a ngc file.
+ 
+[source,{ini}]
+----
+[RS274NGC]
+# start up G/M codes when first loaded
+RS274NGC_STARTUP_CODE = G17 G20 G40 G43H0 G54 G64P0.0005 G80 G90 G94 G97 M5 M9
 ----
 
 === Macro Buttons
@@ -289,8 +366,8 @@ POSTGUI_HALCMD = loadusr halmeter
 
 === Builtin Sample Configurations
 
-The sample configurations 'sim/qtvcp_screens/qtdragon/qtdragon_xyza.ini' is already configured to use QtDragon as its front-end. +
-There are several others, to demonstrate different machine configurations.
+The sample configurations 'sim/qtdragon/' or `sim/qtdragon_hd` are already configured to use QtDragon as the screen. +
+There are several examples, to demonstrate different machine configurations.
 
 == Key Bindings
 
@@ -521,9 +598,9 @@ This is only available in the QtDragon_hd version.
 * There should now be a file in the nc_files folder called {something}-probe-only.ngc. Set the file filter to G-Code Files, navigate to the nc_files directory and load this file.
 * Without changing the offsets, run this program. Make sure the probe tool is installed. When complete, there will be a file in the config directory called 'probe_points.txt'.
 * In Qtdragon_hd press the 'Enable Z Comp' button to enable compensation.
-Look at the status line for indication of success or failure.
-Active compensation will be displayed beside the label: 'Z Level Comp'
-While jogging that display should change based on the compensation component.
+  Look at the status line for indication of success or failure.
+  Active compensation will be displayed beside the label: 'Z Level Comp'
+  While jogging that display should change based on the compensation component.
 
 [NOTE]
 If you use auto raise Z to lift the spindle on pause, you must combine the two
@@ -833,7 +910,7 @@ All values are in machine native units.
 
 [source,{ini}]
 ----
-[TOOLSENSOR]
+[VERSA_TOOLSETTER]
 X = 10
 Y = 10
 Z = -20
@@ -869,7 +946,7 @@ PATH_PREPEND = python
 TOPLEVEL = python/toplevel.py
 ----
 
-=== Needed Files
+=== Required Files
 
 You must copy the following files to your config directory:
 
@@ -945,8 +1022,10 @@ which then sets the X and Y offsets to the values indicated by the LASER OFFSET 
 
 Tabs allow the user to select the most appropriate info/control on the top three panels. +
 If the on screen keyboard is showing and the user wishes to hide it but keep the current tab, +
-they can do that by pressing the current show tab.
-
+they can do that by pressing the current show tab. +
+In QtDragon, there is a splitter handle between the gcode text display and the gcode graphical display. +
+One can use this to split the size between the two areas. This can be set differently in each tab and in each mode.
+ 
 === Main tab
 
 This tab displays the graphical representation of the current program. +
@@ -1033,8 +1112,14 @@ This tabs will display another stab election of G-code utility programs:
 * 'Facing': allows quick face milling of a definable area at angles of 0,45 and 90 degrees
 * 'Hole Circle': allows quick setting of a program to drill a bolt circle of definable diameter and number of holes.
 * 'NGCGUI': is a QtVCP version of the popular G-code subroutine builder/selector.
+<<sub:qtvcp:widgets:qt-ngcgui,Widgets-NGCGUI>>
 
 Custom QtVCP panels can be displayed here by setting the EMBED_TAB_LOCATION option to 'tabWidget_utilities'
+
+=== User Tab
+
+This tab will only be displayed if an embedded panel has been designated for the location `stackedWidget_mainTab`. +
+If more then one embedded tab has been designated, then pressing the user tab will cycle through them.
 
 == Styles
 
@@ -1055,7 +1140,7 @@ A general overview of <<cha:qtvcp:modifying-screens,Customizing Stock Screens>>
 Stylesheets can be leveraged to do a fair amount of customization,
 but you usually need to know a bit about the widget names.
 Pressing F12 will display a stylesheet editor dialog to load/test/save modification.
-Some times these lines will be present and you can change them sometimes yo need to add them.
+Sometimes these lines will be present and you can change them, otherwise you will need to add them.
 
 For instance, to change the DRO font (look for this entry and change the font name):
 
@@ -1115,6 +1200,35 @@ To stop the blur effect with dialogs:
 ----
 #screen_options {
     qproperty-focusBlur_option: false;
+}
+----
+
+Change the gcode text display colors/fonts:
+
+[source,{ini}]
+----
+}
+EditorBase{
+ background:black;
+qproperty-styleColorBackground:grey;
+qproperty-styleColor0: black;
+qproperty-styleColor1: darkblue;
+qproperty-styleColor2: blue;
+qproperty-styleColor3: red;
+qproperty-styleColor4: lightblue;
+qproperty-styleColor5: white;
+qproperty-styleColor6: lightGreen;
+qproperty-styleColor7: yellow ;
+qproperty-styleColorSelectionText: white;
+qproperty-styleColorSelectionBackground: blue;
+qproperty-styleFont0: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont1: "Times,15,-1,5,90,1,0,1,0,0";
+qproperty-styleFont2: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont3: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont4: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont5: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont6: "Times,15,-1,5,90,0,0,1,1,0";
+qproperty-styleFont7: "Times,15,-1,5,90,0,0,1,1,0";
 }
 ----
 

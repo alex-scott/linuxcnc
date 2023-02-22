@@ -48,7 +48,7 @@ use -g WIDTHxHEIGHT for just setting size or -g +XOFFSET+YOFFSET for just positi
                   , help="reparent window into a plug add push the plug xid number to standardout")
           , Option( '-u', dest='usermod', default="", help='file path of user defined handler file')
           , Option( '-o', dest='useropts', action='append', metavar='USEROPTS', default=[]
-                  , help='pass USEROPTS strings to handler under self.w.USEROPTIONS_ list varible')
+                  , help='pass USEROPTS strings to handler under self.w.USEROPTIONS_ list variable')
           ]
 
 from PyQt5.QtCore import QObject, QEvent, pyqtSignal
@@ -128,6 +128,7 @@ class QTVCP:
             sys.exit(0)
         # set paths using basename
         error = self.PATH.set_paths(basepath, bool(INIPATH))
+        self.INFO.IS_SCREEN = bool(INIPATH)
         if error:
             sys.exit(0)
 
@@ -396,6 +397,7 @@ Pressing cancel will close linuxcnc.""" % target)
         # start loop
         global _app
         _app = APP.exec()
+
         self.shutdown()
 
     # finds the postgui file name and INI file path
@@ -423,6 +425,7 @@ Pressing cancel will close linuxcnc.""" % target)
     # This can be called by control c or an early error.
     # close out HAL pins
     def shutdown(self,signum=None,stack_frame=None):
+        LOG.debug('Exiting HAL')
         HAL.exit()
 
         # Throws up a dialog with debug info when an error is encountered
@@ -486,15 +489,15 @@ if __name__ == "__main__":
 
         # we set the log level early so the imported modules get the right level
         if '-d' in sys.argv:
-            # Log level defaults to INFO, so set lower if in debug mode
+            # Log level defaults to WARNING, so set lower if in debug mode
             logger.setGlobalLevel(logger.DEBUG)
             LOG.debug('DEBUGGING logging on')
         elif '-i' in sys.argv:
-            # Log level defaults to INFO, so set lower if in debug mode
+            # Log level defaults to WARNING, so set lower if in info mode
             logger.setGlobalLevel(logger.INFO)
             LOG.info('INFO logging on')
         elif '-v' in sys.argv:
-            # Log level defaults to INFO, so set lowest if in verbose mode
+            # Log level defaults to WARNING, so set lowest if in verbose mode
             logger.setGlobalLevel(logger.VERBOSE)
             LOG.verbose('VERBOSE logging on')
         elif '-q' in sys.argv:
@@ -504,5 +507,4 @@ if __name__ == "__main__":
         from qtvcp.core import Status, Info, Qhal, Path
 
         _qtvcp = QTVCP()
-
-        sys.exit(_qtvcp)
+        sys.exit(_app)
