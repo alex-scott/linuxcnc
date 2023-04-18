@@ -975,6 +975,7 @@ class Pages:
 
     def search_for_serial_device_name(self):
         match = os.popen("""ls /sys/class/tty/*/device/driver | grep 'driver' | cut -d "/" -f 5""").read().split()
+        if len(match) <1: return
         model = self.w.gs2_vfd_device_name.get_model()
         model.clear()
         for item in match:

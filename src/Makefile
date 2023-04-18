@@ -18,6 +18,7 @@
 #     install-docs: Install all enabled documentation into $(DESTDIR).
 #
 
+SHELL:=/bin/bash
 
 default: build-software
 
@@ -686,8 +687,8 @@ install-dirs:
 		$(DESTDIR)$(datadir)/qtvcp/panels \
 		$(DESTDIR)$(datadir)/qtvcp/widgets_ui \
 		$(DESTDIR)$(datadir)/gmoccapy/icons \
-		$(DESTDIR)$(datadir)/glade3/catalogs \
-		$(DESTDIR)$(datadir)/glade3/pixmaps \
+		$(DESTDIR)$(datadir)/glade/catalogs \
+		$(DESTDIR)$(datadir)/glade/pixmaps/hicolor/22x22/actions \
 		$(DESTDIR)$(datadir)/gtksourceview-2.0/language-specs \
 		$(DESTDIR)$(datadir)/linuxcnc/stepconf \
 		$(DESTDIR)$(datadir)/linuxcnc/pncconf \
@@ -761,8 +762,8 @@ install-kernel-indep: install-dirs
 	$(FILE) ../src/emc/usr_intf/pncconf/pncconf-help/*.txt $(DESTDIR)$(prefix)/share/linuxcnc/pncconf/pncconf-help
 	$(FILE) ../src/emc/usr_intf/pncconf/pncconf-help/*.png $(DESTDIR)$(prefix)/share/linuxcnc/pncconf/pncconf-help
 
-	$(FILE) ../lib/python/gladevcp/hal_python.xml $(DESTDIR)$(datadir)/glade3/catalogs/
-	$(FILE) ../lib/python/gladevcp/widget*.png  $(DESTDIR)$(datadir)/glade3/pixmaps/
+	$(FILE) ../lib/python/gladevcp/hal_python.xml $(DESTDIR)$(datadir)/glade/catalogs/
+	$(FILE) ../share/glade/pixmaps/hicolor/22x22/actions/widget*.png  $(DESTDIR)$(datadir)/glade/pixmaps/hicolor/22x22/actions/
 
 	$(FILE) ../share/gtksourceview-2.0/language-specs/*.lang  $(DESTDIR)$(datadir)/gtksourceview-2.0/language-specs/
 
@@ -794,15 +795,14 @@ install-python: install-dirs
 	$(FILE) ../lib/python/rs274/*.py $(DESTDIR)$(SITEPY)/rs274
 	$(FILE) ../lib/python/touchy/*.py $(DESTDIR)$(SITEPY)/touchy
 	$(FILE) ../lib/python/gscreen/*.py $(DESTDIR)$(SITEPY)/gscreen
-	$(FILE) ../lib/python/qtvcp/*.py ../lib/python/qtvcp/*.ui ../lib/python/qtvcp/*.txt $(DESTDIR)$(SITEPY)/qtvcp
+	$(FILE) ../lib/python/qtvcp/*.{py,ui,txt} $(DESTDIR)$(SITEPY)/qtvcp
 	$(FILE) ../lib/python/qtvcp/designer/*.txt $(DESTDIR)$(SITEPY)/qtvcp/designer
 	$(FILE) ../lib/python/qtvcp/widgets/*.py $(DESTDIR)$(SITEPY)/qtvcp/widgets
-	$(FILE) ../lib/python/qtvcp/widgets/widget_icons/*.png ../lib/python/qtvcp/widgets/widget_icons/*.gif $(DESTDIR)$(SITEPY)/qtvcp/widgets/widget_icons
+	$(FILE) ../lib/python/qtvcp/widgets/widget_icons/*.{png,gif} $(DESTDIR)$(SITEPY)/qtvcp/widgets/widget_icons
 	$(FILE) ../lib/python/qtvcp/plugins/*.py $(DESTDIR)$(SITEPY)/qtvcp/plugins
 	$(TREE) ../lib/python/qtvcp/lib/* $(DESTDIR)$(SITEPY)/qtvcp/lib
 	$(FILE) ../lib/python/gmoccapy/*.py $(DESTDIR)$(SITEPY)/gmoccapy
-	$(FILE) ../lib/python/gladevcp/*.py $(DESTDIR)$(SITEPY)/gladevcp
-	$(FILE) ../lib/python/gladevcp/*.glade $(DESTDIR)$(SITEPY)/gladevcp
+	$(FILE) ../lib/python/gladevcp/*.{py,png,glade} $(DESTDIR)$(SITEPY)/gladevcp
 	$(FILE) ../lib/python/stepconf/*.py $(DESTDIR)$(SITEPY)/stepconf
 	$(FILE) ../lib/python/pncconf/*.py $(DESTDIR)$(SITEPY)/pncconf
 	$(FILE) ../lib/python/pyui/*.py $(DESTDIR)$(SITEPY)/pyui
@@ -835,7 +835,7 @@ install-python: install-dirs
 	$(EXE) $(patsubst %.py,../bin/%,$(VISMACH_PY)) $(DESTDIR)$(bindir)
 	$(EXE) $(patsubst %.py,../bin/%,$(QTPLASMAC_PY)) $(DESTDIR)$(bindir)
 	$(FILE) ../share/linuxcnc/linuxcnc-wizard.gif $(DESTDIR)$(prefix)/share/linuxcnc
-	$(FILE) ../share/axis/images/*.png ../share/axis/images/*.gif ../share/axis/images/*.xbm ../share/axis/images/*.ngc $(DESTDIR)$(datadir)/axis/images
+	$(FILE) ../share/axis/images/*.{png,gif,xbm,ngc} $(DESTDIR)$(datadir)/axis/images
 	$(FILE) ../share/axis/tcl/*.tcl $(DESTDIR)$(datadir)/axis/tcl
 	$(FILE) ../share/gscreen/images/*.gif $(DESTDIR)$(datadir)/gscreen/images
 	$(TREE) ../share/gscreen/skins/* $(DESTDIR)$(datadir)/gscreen/skins

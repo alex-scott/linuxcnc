@@ -107,6 +107,7 @@ Defining a code involves the following steps:
 - Decide if and how results are handled.
 - Decide about the execution sequence.
 
+[[sub:remap:sec:builtin-remaps]]
 === Builtin Remaps
 
 Please note that currently only some existing codes can be redefined, while there are many 'free' codes that may be available for remapping.
@@ -240,6 +241,7 @@ A detailed discussion of REMAP parameters is found in the reference section belo
 
 == Configuring Remapping
 
+[[sub:remap:sec:remap-statement]]
 === The REMAP statement
 
 To remap a code, define it using the `REMAP` option in `RS274NG` section of your INI file.
@@ -401,7 +403,7 @@ M2
 
 - Executing `M400` will fail with the message `user-defined M400: missing: P`.
 - Executing `M400 P123` will display `P word=123.000000`.
-- Executing `M400 P123 Q456` will display `P word=123.000000` and `Q word set: 456.000000`
+- Executing `M400 P123 Q456` will display `P word=123.000000` and `Q word set: 456.000000`.
 
 .Example for positional parameter passing to NGC procedures
 
@@ -719,8 +721,8 @@ def change_prolog(self, **words):
         self.params["current_pocket"] = self.current_pocket
         self.params["selected_pocket"] = self.selected_pocket
         return INTERP_OK
-    except Exception, e:
-        return "M6/change_prolog: %s" % (e)
+    except Exception as e:
+        return "M6/change_prolog: {}".format(e)
 ---------------------------------------------------------------------
 
 You will find that most prolog functions look very similar:
@@ -850,8 +852,8 @@ If you're confident with the  <<remap:interpreter-action-on-t,default implementa
 But remapping is also a way to work around deficiencies in the current implementation, for instance to not block until the "tool-prepared" pin is set.
 
 What you could do, for instance, is:
-- In a remapped T, just set the equivalent of the "tool-prepare" pin, but *not* wait for "tool-prepared" here.
-- In the corresponding remapped M6, wait for the "tool-prepared" at the very beginning of the O-word procedure.
+- In a remapped T, just set the equivalent of the `tool-prepare` pin, but *not* wait for `tool-prepared` here.
+- In the corresponding remapped M6, wait for the `tool-prepared` at the very beginning of the O-word procedure.
 
 Again, the `iocontrol` tool-prepare/tool-prepared pins would be unused and replaced by `motion.*` pins, so those would pins must be looped:
 
@@ -928,6 +930,7 @@ def prepare_epilog(self, **words):
 The functions 'prepare_prolog' and 'prepare_epilog' are part of the _standard glue_ provided by 'nc_files/remap_lib/python-stdglue/stdglue.py'.
 This module is intended to cover most standard remapping situations in a common way.
 
+[[sub:remap:sec:error-handling]]
 === Error handling: dealing with abort
 
 The built in tool change procedure has some precautions for dealing with a program abort, e.g., by hitting escape in AXIS during a change.

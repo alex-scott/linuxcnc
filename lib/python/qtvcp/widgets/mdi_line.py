@@ -116,7 +116,12 @@ class MDI(QLineEdit):
             return
         else:
             ACTION.CALL_MDI(text+'\n')
-            ACTION.RELOAD_DISPLAY()
+
+            # var file update with display reload is necessary for g10 commands to redraw the preview at the new rotation.
+            # without this, the WCS and grid rotate, but the preview remains at the previous rotation.
+            if 'g10' in text.lower():
+                linuxcnc.command().task_plan_synch()
+                ACTION.RELOAD_DISPLAY()
         t = time.time() + 0.1
         while time.time() < t:
             QApplication.processEvents()

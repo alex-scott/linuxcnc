@@ -1,4 +1,4 @@
-VERSION = '1.235.265'
+VERSION = '1.235.271'
 
 '''
 qtplasmac_handler.py
@@ -276,6 +276,8 @@ class HandlerClass:
         self.droScale = 1
         self.mdiError = False
         self.extLaserButton = False
+        self.virtualMachine = False
+        self.realTimeDelay = False
         # plasmac states
         self.IDLE           =  0
         self.PROBE_HEIGHT   =  1
@@ -374,6 +376,7 @@ class HandlerClass:
         self.ohmicLedTimer.setSingleShot(True)
         self.set_color_styles()
         self.autorepeat_keys(False)
+        self.vm_check()
         # set hal pins only after initialized__ has begun
         # some locales won't set pins before this phase
         self.thcFeedRatePin.set(self.thcFeedRate)
@@ -606,6 +609,7 @@ class HandlerClass:
 
     # we want custom notifications for jog errors
     def new_process_error(self, w, kind, text):
+        self.realTimeDelay = False
         O = self.w.screen_options
         N = O.QTVCP_INSTANCE_._NOTICE
         if 'jog-inhibit' in text:
@@ -622,10 +626,13 @@ class HandlerClass:
                 text = _translate('HandlerClass', 'Ohmic Probe has aborted active jogging')
             elif self.w.led_breakaway_switch.hal_pin.get():
                 text = _translate('HandlerClass', 'Breakaway Switch has aborted active jogging')
+        elif self.virtualMachine and 'unexpected realtime delay' in text.lower():
+            text = 'Error suppressed:\n"{}"\nRealtime delays are expected in a virtual environment'.format(text.strip())
+            self.realTimeDelay = True
         if O.desktop_notify:
             if 'on limit switch error' in text:
                 N.update(O.notify_hard_limits, title='Machine Error:', message=text, msgs=O.notify_max_msgs)
-            elif kind == linuxcnc.OPERATOR_ERROR:
+            elif kind == linuxcnc.OPERATOR_ERROR and not self.realTimeDelay:
                 N.update(O.notify_critical, title='Operator Error:', message=text, msgs=O.notify_max_msgs)
             elif kind == linuxcnc.OPERATOR_TEXT:
                 N.update(O.notify_critical, title='Operator Text:', message=text, msgs=O.notify_max_msgs)
@@ -670,6 +677,7 @@ class HandlerClass:
         self.developmentPin = self.h.newpin('development', hal.HAL_BIT, hal.HAL_IN)
         self.extAbortPin = self.h.newpin('ext_abort', hal.HAL_BIT, hal.HAL_IN)
         self.extAutoVoltsEnablePin = self.h.newpin('ext_auto_volts_enable', hal.HAL_BIT, hal.HAL_IN)
+        self.extChangeConsPin = self.h.newpin('ext_consumables', hal.HAL_BIT, hal.HAL_IN)
         self.extCornerLockEnablePin = self.h.newpin('ext_cornerlock_enable', hal.HAL_BIT, hal.HAL_IN)
         self.extCutRecCancelPin = self.h.newpin('ext_cutrec_cancel', hal.HAL_BIT, hal.HAL_IN)
         self.extCutRecRevPin = self.h.newpin('ext_cutrec_rev', hal.HAL_BIT, hal.HAL_IN)
@@ -682,6 +690,7 @@ class HandlerClass:
         self.extCutRecSWPin = self.h.newpin('ext_cutrec_sw', hal.HAL_BIT, hal.HAL_IN)
         self.extCutRecWPin = self.h.newpin('ext_cutrec_w', hal.HAL_BIT, hal.HAL_IN)
         self.extCutRecNWPin = self.h.newpin('ext_cutrec_nw', hal.HAL_BIT, hal.HAL_IN)
+        self.extFramingPin = self.h.newpin('ext_frame_job', hal.HAL_BIT, hal.HAL_IN)
         self.extHeightOvrCountsPin = self.h.newpin('ext_height_ovr_counts', hal.HAL_S32, hal.HAL_IN)
         self.extHeightOvrCountEnablePin = self.h.newpin('ext_height_ovr_count_enable', hal.HAL_BIT, hal.HAL_IN)
         self.extHeightOvrMinusPin = self.h.newpin('ext_height_ovr_minus', hal.HAL_BIT, hal.HAL_IN)
@@ -693,9 +702,12 @@ class HandlerClass:
 #        self.extKerfCrossEnablePin = self.h.newpin('ext_kerfcross_enable', hal.HAL_BIT, hal.HAL_IN)
         self.extLaserTouchOffPin = self.h.newpin('ext_laser_touchoff', hal.HAL_BIT, hal.HAL_IN)
         self.extMeshModePin = self.h.newpin('ext_mesh_mode', hal.HAL_BIT, hal.HAL_IN)
+        self.extOhmicPin = self.h.newpin('ext_ohmic', hal.HAL_BIT, hal.HAL_IN)
         self.extOhmicProbeEnablePin = self.h.newpin('ext_ohmic_probe_enable', hal.HAL_BIT, hal.HAL_IN)
         self.extPausePin = self.h.newpin('ext_pause', hal.HAL_BIT, hal.HAL_IN)
         self.extPowerPin = self.h.newpin('ext_power', hal.HAL_BIT, hal.HAL_IN)
+        self.extProbePin = self.h.newpin('ext_probe', hal.HAL_BIT, hal.HAL_IN)
+        self.extPulsePin = self.h.newpin('ext_pulse', hal.HAL_BIT, hal.HAL_IN)
         self.extRunPausePin = self.h.newpin('ext_run_pause', hal.HAL_BIT, hal.HAL_IN)
         self.extRunPin = self.h.newpin('ext_run', hal.HAL_BIT, hal.HAL_IN)
         self.extThcEnablePin = self.h.newpin('ext_thc_enable', hal.HAL_BIT, hal.HAL_IN)
@@ -851,7 +863,7 @@ class HandlerClass:
         self.w.chk_keyboard_shortcuts.setChecked(self.PREFS.getpref('Use keyboard shortcuts', False, bool, 'GUI_OPTIONS'))
         self.w.chk_soft_keyboard.setChecked(self.PREFS.getpref('Use soft keyboard', False, bool, 'GUI_OPTIONS'))
         self.w.chk_overlay.setChecked(self.PREFS.getpref('Show materials', True, bool, 'GUI_OPTIONS'))
-        self.w.chk_run_from_line.setChecked(self.PREFS.getpref('Run from line', False, bool, 'GUI_OPTIONS'))
+        self.w.chk_run_from_line.setChecked(self.PREFS.getpref('Run from line', True, bool, 'GUI_OPTIONS'))
         self.w.chk_tool_tips.setChecked(self.PREFS.getpref('Tool tips', True, bool, 'GUI_OPTIONS'))
         self.w.chk_exit_warning.setChecked(self.PREFS.getpref('Exit warning', True, bool, 'GUI_OPTIONS'))
         self.exitMessage = self.PREFS.getpref('Exit warning text', '', str, 'GUI_OPTIONS')
@@ -944,6 +956,13 @@ class HandlerClass:
         self.w.filemanager.loadButton.hide()
         # for copy/paste control if required
         self.w.filemanager.copy_control.hide()
+        # add vertical and horizontal scroll bars to the materials QComboBoxs 
+        self.w.material_selector.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w.material_selector.view().setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w.conv_material.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w.conv_material.view().setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w.materials_box.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w.materials_box.view().setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.w.gcode_display.set_margin_width(3)
         self.w.gcode_display.setBraceMatching(False)
         self.w.gcode_display.setCaretWidth(0)
@@ -1541,8 +1560,6 @@ class HandlerClass:
             ACTION.CALL_MDI_WAIT('T0 M6')
             ACTION.SET_MANUAL_MODE()
             self.firstHoming = True
-        if not self.fileOpened:
-            self.set_blank_gcodeprops()
         self.w.gcodegraphics.updateGL()
         self.w.conv_preview.updateGL()
         log = _translate('HandlerClass', 'Machine homed')
@@ -1659,21 +1676,19 @@ class HandlerClass:
 
     def update_gcode_properties(self, props):
         if props:
-            if 'qtplasmac_program_clear.ngc' in props['name']:
-                self.set_blank_gcodeprops()
-            else:
-                self.gcodeProps = props
+            self.gcodeProps = props
             if props['gcode_units'] == 'in':
                 STATUS.emit('metric-mode-changed', False)
             else:
                 STATUS.emit('metric-mode-changed', True)
 
     def error_update(self, obj, kind, error):
-        if kind == linuxcnc.OPERATOR_ERROR:
-            self.error_status(True)
-            self.mdiError = True
-        if kind == linuxcnc.NML_ERROR:
-            self.error_status(True)
+        if not self.realTimeDelay:
+            if kind == linuxcnc.OPERATOR_ERROR:
+                self.error_status(True)
+                self.mdiError = True
+            if kind == linuxcnc.NML_ERROR:
+                self.error_status(True)
 
 
 #########################################################################################################################
@@ -1959,9 +1974,9 @@ class HandlerClass:
         mid, size = GlCanonDraw.extents_info(self.w.gcodegraphics)
         if self.gcodeProps:
             mult = 1
-            if self.units == 'in' and self.gcodeProps['machine_unit_sys'] == 'Metric':
+            if self.units == 'in' and self.gcodeProps['gcode_units'] == 'mm':
                 mult = 0.03937
-            elif self.units == 'mm' and self.gcodeProps['machine_unit_sys'] == 'Imperial':
+            elif self.units == 'mm' and self.gcodeProps['gcode_units'] == 'in':
                 mult = 25.4
             x = (round(float(self.gcodeProps['x'].split()[0]) * mult, 4))
             y = (round(float(self.gcodeProps['y'].split()[0]) * mult, 4))
@@ -2372,27 +2387,6 @@ class HandlerClass:
         if value == 0 and STATUS.is_mdi_mode():
             ACTION.SET_MANUAL_MODE()
 
-    def set_blank_gcodeprops(self):
-        # a workaround for the extreme values in gcodeprops for a blank file
-        self.gcodeProps = {}
-        self.gcodeProps['name'] = 'generated from qtplasmac_program_clear.ngc'
-        self.gcodeProps['size'] = '35 bytes\n2 gcode lines'
-        self.gcodeProps['g0'] = '0.0 {}'.format(self.units)
-        self.gcodeProps['g1'] = '0.0 {}'.format(self.units)
-        self.gcodeProps['run'] = '0 Seconds'
-        self.gcodeProps['x'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        self.gcodeProps['y'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        self.gcodeProps['z'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        self.gcodeProps['x_zero_rxy'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        self.gcodeProps['y_zero_rxy'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        self.gcodeProps['z_zero_rxy'] = '0.0 to 0.0 = 0.0 {}'.format(self.units)
-        if self.units:
-            mach = 'Metric'
-        else:
-            mach = 'Imperial'
-        self.gcodeProps['machine_unit_sys'] = '{}'.format(mach)
-        self.gcodeProps['gcode_units'] = '{}'.format(self.units)
-
     def wcs_rotation(self, wcs):
         if wcs == 'get':
             self.currentRotation = STATUS.stat.rotation_xy
@@ -2445,9 +2439,9 @@ class HandlerClass:
         self.boundsError[boundsType] = False
         msgList = []
         boundsMultiplier = 1
-        if self.units == 'in' and self.gcodeProps['machine_unit_sys'] == 'Metric':
+        if self.units == 'in' and self.gcodeProps['gcode_units'] == 'mm':
             boundsMultiplier = 0.03937
-        elif self.units == 'mm' and self.gcodeProps['machine_unit_sys'] == 'Imperial':
+        elif self.units == 'mm' and self.gcodeProps['gcode_units'] == 'in':
             boundsMultiplier = 25.4
         if framing:
             xStart = STATUS.stat.g5x_offset[0] + xOffset
@@ -2762,6 +2756,7 @@ class HandlerClass:
         self.extHeightOvrResetPin.value_changed.connect(lambda v:self.height_ovr_pressed(v,0))
         self.extHeightOvrCountsPin.value_changed.connect(lambda v:self.height_ovr_encoder(v))
         self.extHeightOvrScalePin.value_changed.connect(lambda v:self.height_ovr_scale_change(v))
+        self.extChangeConsPin.value_changed.connect(lambda v:self.ext_change_consumables(v))
         self.extCutRecRevPin.value_changed.connect(lambda v:self.cutrec_motion(-v))
         self.extCutRecFwdPin.value_changed.connect(lambda v:self.cutrec_motion(v))
         self.extCutRecNPin.value_changed.connect(lambda v:self.cutrec_move(v, 0, 1))
@@ -2782,6 +2777,10 @@ class HandlerClass:
         self.extOhmicProbeEnablePin.value_changed.connect(lambda v:self.ext_ohmic_probe_enable_changed(v))
         self.extAutoVoltsEnablePin.value_changed.connect(lambda v:self.ext_auto_volts_enable_changed(v))
         self.extJogSlowPin.value_changed.connect(self.ext_jog_slow)
+        self.extProbePin.value_changed.connect(lambda v:self.ext_probe_test(v))
+        self.extPulsePin.value_changed.connect(lambda v:self.ext_torch_pulse(v))
+        self.extOhmicPin.value_changed.connect(lambda v:self.ext_ohmic_test(v))
+        self.extFramingPin.value_changed.connect(lambda v:self.ext_frame_job(v))
         self.probeTestErrorPin.value_changed.connect(lambda v:self.probe_test_error(v))
         self.w.preview_stack.currentChanged.connect(self.preview_stack_changed)
         self.w.gcode_stack.currentChanged.connect(self.gcode_stack_changed)
@@ -3290,6 +3289,15 @@ class HandlerClass:
             hal.set_p('qtplasmac.led_ohmic_probe', '1')
             self.ohmicLedTimer.start(150)
 
+    def vm_check(self):
+        try:
+            response = (Popen('cat /sys/class/dmi/id/product_name', stdout=PIPE, stderr=PIPE, shell=True).communicate()[0]).decode('utf-8')
+            if 'virtual' in response.lower() or 'vmware' in response.lower():
+                self.virtualMachine = True
+                STATUS.emit('update-machine-log', '"{}" Virtual Machine detected'.format(response.strip()), 'TIME')
+        except:
+            pass
+
 #########################################################################################################################
 # TIMER FUNCTIONS #
 #########################################################################################################################
@@ -3539,8 +3547,6 @@ class HandlerClass:
                     self.ccButton = 'button_{}'.format(str(bNum))
                     self.idleHomedList.append(self.ccButton)
                     self.pausedValidList.append(self.ccButton)
-                    self.extChangeConsPin = self.h.newpin('ext_consumables', hal.HAL_BIT, hal.HAL_IN)
-                    self.extChangeConsPin.value_changed.connect(lambda v:self.ext_change_consumables(v))
                 else:
                     msg1 = _translate('HandlerClass', 'Check button code for invalid or missing arguments')
                     STATUS.emit('error', linuxcnc.OPERATOR_ERROR, '{}:\n{} #{}\n{}\n'.format(head, msg0, bNum, msg1))
@@ -3559,8 +3565,6 @@ class HandlerClass:
                     self.ptButton = 'button_{}'.format(str(bNum))
                     self.idleHomedList.append(self.ptButton)
                     self.probeText = self.w[self.ptButton].text()
-                    self.extProbePin = self.h.newpin('ext_probe', hal.HAL_BIT, hal.HAL_IN)
-                    self.extProbePin.value_changed.connect(lambda v:self.ext_probe_test(v))
                 else:
                     msg1 = _translate('HandlerClass', 'Check button code for extra arguments')
                     STATUS.emit('error', linuxcnc.OPERATOR_ERROR, '{}:\n{} #{}\n{}\n'.format(head, msg0, bNum, msg1))
@@ -3581,8 +3585,6 @@ class HandlerClass:
                     self.idleOnList.append(self.tpButton)
                     self.pausedValidList.append(self.tpButton)
                     self.tpText = self.w[self.tpButton].text()
-                    self.extPulsePin = self.h.newpin('ext_pulse', hal.HAL_BIT, hal.HAL_IN)
-                    self.extPulsePin.value_changed.connect(lambda v:self.ext_torch_pulse(v))
                 else:
                     msg1 = _translate('HandlerClass', 'Check button code for extra arguments')
                     STATUS.emit('error', linuxcnc.OPERATOR_ERROR, '{}:\n{} #{}\n{}\n'.format(head, msg0, bNum, msg1))
@@ -3591,8 +3593,6 @@ class HandlerClass:
                 self.otButton = 'button_{}'.format(str(bNum))
                 self.idleOnList.append(self.otButton)
                 self.pausedValidList.append(self.otButton)
-                self.extOhmicPin = self.h.newpin('ext_ohmic', hal.HAL_BIT, hal.HAL_IN)
-                self.extOhmicPin.value_changed.connect(lambda v:self.ext_ohmic_test(v))
             elif 'framing' in bCode:
                 frButton = True
                 self.defaultZ = True
@@ -3617,8 +3617,6 @@ class HandlerClass:
                 if frButton:
                     self.frButton = 'button_{}'.format(str(bNum))
                     self.idleHomedList.append(self.frButton)
-                    self.extFramingPin = self.h.newpin('ext_frame_job', hal.HAL_BIT, hal.HAL_IN)
-                    self.extFramingPin.value_changed.connect(lambda v:self.ext_frame_job(v))
             elif 'cut-type' in bCode:
                 self.ctButton = 'button_{}'.format(str(bNum))
                 self.idleOnList.append(self.ctButton)
@@ -4205,6 +4203,13 @@ class HandlerClass:
             zHeight = self.zMax - (hal.get_value('plasmac.max-offset') * self.unitsPerMm)
             if STATUS.is_on_and_idle() and STATUS.is_all_homed():
                 self.framing = True
+                previousMode = ''
+                if self.units == 'in' and STATUS.is_metric_mode():
+                    previousMode = 'G21'
+                    ACTION.CALL_MDI('G20')
+                elif self.units == 'mm' and not STATUS.is_metric_mode():
+                    previousMode = 'G20'
+                    ACTION.CALL_MDI('G21')
                 ACTION.CALL_MDI_WAIT('G64 P{:0.3f}'.format(0.25 * self.unitsPerMm))
                 if self.defaultZ:
                     ACTION.CALL_MDI('G53 G0 Z{:0.4f}'.format(zHeight))
@@ -4214,6 +4219,7 @@ class HandlerClass:
                 ACTION.CALL_MDI('G53 G1 X{:0.2f} Y{:0.2f}'.format(frame_points[4][0], frame_points[4][1]))
                 ACTION.CALL_MDI('G53 G1 X{:0.2f} Y{:0.2f}'.format(frame_points[1][0], frame_points[1][1]))
                 ACTION.CALL_MDI('G0 X0 Y0')
+                ACTION.CALL_MDI(previousMode)
 
     def single_cut(self):
         self.set_buttons_state([self.idleList, self.idleOnList, self.idleHomedList], False)
