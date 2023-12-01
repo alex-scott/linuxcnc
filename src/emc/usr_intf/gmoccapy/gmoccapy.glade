@@ -733,6 +733,41 @@
       </row>
     </data>
   </object>
+  <object class="GtkWindow" id="popup0_win">
+    <property name="name">popup0_win</property>
+    <property name="can-focus">False</property>
+    <property name="type">popup</property>
+    <property name="resizable">False</property>
+    <property name="window-position">center</property>
+    <property name="type-hint">notification</property>
+    <property name="urgency-hint">True</property>
+    <property name="accept-focus">False</property>
+    <property name="focus-on-map">False</property>
+    <property name="deletable">False</property>
+    <property name="gravity">center</property>
+    <child>
+      <object class="GtkLabel" id="popup0_lbl">
+        <property name="name">popup0_label</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="margin-start">20</property>
+        <property name="margin-end">20</property>
+        <property name="margin-top">20</property>
+        <property name="margin-bottom">20</property>
+        <property name="label" translatable="yes">F3000</property>
+        <property name="justify">center</property>
+        <property name="ellipsize">middle</property>
+        <attributes>
+          <attribute name="font-desc" value="Sans Bold 60"/>
+          <attribute name="style" value="normal"/>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+    </child>
+    <style>
+      <class name=".popup0_win"/>
+    </style>
+  </object>
   <object class="EMC_Action_Save" id="hal_action_save">
     <property name="textview">gcode_view</property>
   </object>

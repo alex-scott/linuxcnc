@@ -461,6 +461,21 @@ class GetIniInfo:
             messages = list(zip(message_text, message_type, message_pinname))
             return messages
 
+    def get_popup_messages(self):
+        message_text = self.inifile.findall("DISPLAY", "POPUP_TEXT")
+        message_type = self.inifile.findall("DISPLAY", "POPUP_TYPE")
+        message_pinname = self.inifile.findall("DISPLAY", "POPUP_PINNAME")
+        if len(message_text) != len(message_type) or len(message_text) != len(message_pinname) :
+            LOG.warning("ERROR in user message setup")
+            return [None, 2.0]
+        else:
+            for element in message_pinname:
+                if " " in element:
+                    LOG.warning("ERROR in user message setup. Pin name should not contain spaces.")
+                    return None
+            messages = list(zip(message_text, message_type, message_pinname))
+            return messages
+
     def get_machine_units(self):
         units = self.inifile.find("TRAJ", "LINEAR_UNITS")
         if units == "mm" or units == "cm" or units == "inch":

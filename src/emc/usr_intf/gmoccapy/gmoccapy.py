@@ -47,7 +47,10 @@ import locale              # for setting the language of the GUI
 import gettext             # to extract the strings to be translated
 from collections import OrderedDict # needed for proper jog button arrangement
 from time import strftime  # needed for the clock in the GUI
+from time import time
 from threading import Timer
+import re
+
 #from Gtk._Gtk import main_quit
 
 # Throws up a dialog with debug info when an error is encountered
@@ -126,6 +129,7 @@ INFO_ICON = "dialog_information"
 
 
 class gmoccapy(object):
+
     def __init__(self, argv):
 
         # prepare for translation / internationalisation
@@ -150,6 +154,8 @@ class gmoccapy(object):
             }
             #eb_program_label, #eb_blockheight_label {
                 background: rgba(0,0,0,1);
+            #popup0_win {
+                background: rgba(255, 253, 208, 1);
             }
         """
         screen = Gdk.Screen.get_default()
@@ -311,6 +317,8 @@ class gmoccapy(object):
         self._make_hal_pins()
 
         self._init_user_messages()
+
+        self._init_popup_messages()
 
         # set the title of the window, to show the release
         self.widgets.window1.set_title("gmoccapy for LinuxCNC {0}".format(_RELEASE))
@@ -2269,7 +2277,7 @@ class gmoccapy(object):
         for message in user_messages:
             if message[1] == "status":
                 pin = hal_glib.GPin(self.halcomp.newpin("messages." + message[2], hal.HAL_BIT, hal.HAL_IN))
-                pin.connect("value_changed", self._show_user_message, message)
+                pin.connect("value_changed", self._show_user_message, message[0])
             elif message[1] == "okdialog":
                 pin = hal_glib.GPin(self.halcomp.newpin("messages." + message[2], hal.HAL_BIT, hal.HAL_IN))
                 pin.connect("value_changed", self._show_user_message, message)
@@ -3446,11 +3454,13 @@ class gmoccapy(object):
             self.initialized = False
             self.widgets.spc_spindle.set_value(self.stat.spindle[0]['override'] * 100)
             self.spindle_override = self.stat.spindle[0]['override']
+            self._popup_pin_changed(":spindle-override", self.popup_spindle_format)
             self.initialized = True
         if self.feed_override != self.stat.feedrate:
             self.initialized = False
             self.widgets.spc_feed.set_value(self.stat.feedrate * 100)
             self.feed_override = self.stat.feedrate
+            self._popup_pin_changed(":feed-override", self.popup_feed_format)
             self.initialized = True
         if self.rapidrate != self.stat.rapidrate:
             self.initialized = False
@@ -5704,6 +5714,137 @@ class gmoccapy(object):
         # make a pin to set ignore limits
         pin = self.halcomp.newpin("ignore-limits", hal.HAL_BIT, hal.HAL_IN)
         hal_glib.GPin(pin).connect("value_changed", self._ignore_limits)
+
+    def _popup_format_callback(self, s, pinType):
+        start = 0;
+        end = len(s)
+        out = []
+        for m in re.finditer('{(.*?)(:.*?)?}', s):
+            fmt = "{" + m[2] + "}" if m[2] else "{}"
+            varname = m[1]
+            if start < m.span()[0]:
+                out.append(s[start: m.span()[0]])
+            if varname == "value" or varname == "":
+                out.append(lambda pinv, fmt=fmt: fmt.format(pinv))
+            elif varname == "FEED_OVERRIDE":
+                out.append(lambda pinv: "%d" % (self.stat.feedrate * 100))
+            elif varname == "SPINDLE_OVERRIDE":
+                out.append(lambda pinv: "%d" % (self.stat.spindle[0]['override'] * 100))
+            elif varname == "JOG_OVERRIDE":
+                out.append(lambda pinv: "%d" % (self.widgets.spc_lin_jog_vel.get_value() * (1 / self.faktor)))
+            elif varname == "AXIS_NUM_0":
+                out.append(lambda pinv: "XYZABCUVW"[pinv] if pinv>=0 and pinv<9 else "OFF")
+            elif varname == "AXIS_NUM_1":
+                out.append(lambda pinv: " XYZABCUVW"[pinv] if pinv >= 1 and pinv<=9 else "OFF")
+            elif varname == "STEP_VAL":
+                out.append(lambda pinv: " " + str(pinv).rstrip("0.")  + " " if pinv>0 else "OFF" )
+            elif varname.startswith("popup."):
+                out.append(lambda pinv, varname=varname: "%s" % self.popup_values[varname] )
+            else:  ### handle special variables HERE
+                LOG.warning("UNKNOWN popup format variable %s" % varname, s)
+                continue
+            start = m.span()[1]
+        if start < end:
+            out.append(s[start: end])
+        # print(s)
+        return lambda pin: "".join(map(lambda strPart: strPart(pin) if callable(strPart) else strPart, out))
+
+    def _popup_pin_changed(self, pin, messageCallback ):
+        pinv = pin.get() if not isinstance(pin, str) else pin
+        pinn = pin.name if not isinstance(pin, str) else pin
+
+        if self.popup_values[pinn] == None:
+            self.popup_values[pinn] = pinv
+            return
+        else:
+            self.popup_values[pinn] = pinv
+
+        if not messageCallback: return
+
+        if self.popup_disabled: return
+
+        msg = messageCallback(pinv)
+        if msg is not None and msg != "":
+            self.popup_show(msg)
+
+    popup_values = {}
+    popup_disabled = False
+    popup_delay = 2.0
+    popup_hide_at : float  = 0.0
+
+    # special format callbacks
+    popup_feed_format = None
+    popup_spindle_format = None
+
+    def popup_toggle(self, enabled):
+        self.popup_disabled = not enabled
+
+    def popup_check(self):
+        if self.popup_hide_at <= time():
+            self.widgets.popup0_win.hide()
+
+    def popup_show(self, label: str):
+        if self.popup_disabled: return
+        self.widgets.popup0_lbl.set_label(label)
+        self.widgets.popup0_win.show()
+        self.popup_hide_at = time() + self.popup_delay
+        Timer(self.popup_delay + 0.01, lambda: self.popup_check()).start()
+
+    def popup_hide(self):
+        self.widgets.popup0_win.hide()
+
+    # [DISPLAY]
+    # POPUP_TEXT = SP
+    # START
+    # POPUP_TYPE = bit
+    # POPUP_PINNAME = spindle - started
+    # POPUP_VARS = NONE
+    #
+    # POPUP_TEXT = SP
+    # STOP
+    # POPUP_TYPE = bit
+    # POPUP_PINNAME = spindle - stopped
+    # POPUP_VARS = PIN
+    #
+    # POPUP_TEXT = F % s %%
+    # POPUP_TYPE = s32
+    # POPUP_PINNAME = feed - override
+    # POPUP_VARS = FEED_OVERRIDE
+    #
+    # POPUP_TEXT = S % s %%
+    # POPUP_TYPE = s32
+    # POPUP_PINNAME = spindle - override
+    # POPUP_VARS = SPINDLE_OVERRIDE
+    #
+    # POPUP_TEXT = JOG % s %%
+    # POPUP_TYPE = float
+    # POPUP_PINNAME = jog - override
+    # POPUP_VARS = JOG_OVERRIDE
+
+    def _init_popup_messages(self):
+        popup_messages = self.get_ini_info.get_popup_messages()
+        if not popup_messages:
+            return
+        self.popup_values[":feed-override"] = None
+        self.popup_values[":spindle-override"] = None
+        for message in popup_messages:
+            pin_name = message[2]
+            mtype = message[1]
+            if mtype == "bit": ptype = hal.HAL_BIT
+            elif mtype == "true": ptype = hal.HAL_BIT
+            elif mtype == "s32": ptype = hal.HAL_S32
+            elif mtype == "float": ptype = hal.HAL_FLOAT
+            else:
+                LOG.error(_("Message type {0} not supported").format(message[1]))
+                continue
+            if pin_name[0] != ":":
+                pin = hal_glib.GPin(self.halcomp.newpin("popup." + pin_name, ptype, hal.HAL_IN))
+                pin.connect("value_changed", self._popup_pin_changed, self._popup_format_callback(message[0], message[1]))
+                self.popup_values["popup." + pin_name] = None
+            elif pin_name == ":feed-override":
+                self.popup_feed_format = self._popup_format_callback(message[0], message[1])
+            elif pin_name == ":spindle-override":
+                self.popup_spindle_format = self._popup_format_callback(message[0], message[1])
 
 # Hal Pin Handling End
 # =========================================================
