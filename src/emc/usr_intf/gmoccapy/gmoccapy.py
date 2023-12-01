@@ -47,6 +47,7 @@ import locale              # for setting the language of the GUI
 import gettext             # to extract the strings to be translated
 from collections import OrderedDict # needed for proper jog button arrangement
 from time import strftime  # needed for the clock in the GUI
+from threading import Timer
 #from Gtk._Gtk import main_quit
 
 # Throws up a dialog with debug info when an error is encountered
@@ -2926,7 +2927,8 @@ class gmoccapy(object):
         start_as = "rbtn_" + self.prefs.getpref("screen1", "window", str)
         self.widgets[start_as].set_active(True)
         if start_as == "rbtn_fullscreen":
-            self.widgets.window1.fullscreen()
+            Timer(2, self.widgets.window1.fullscreen ).start()
+            #self.widgets.window1.fullscreen()
         elif start_as == "rbtn_maximized":
             self.widgets.window1.maximize()
         else:
