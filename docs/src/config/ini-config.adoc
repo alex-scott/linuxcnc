@@ -271,8 +271,8 @@ Descriptions of the interfaces are in the Interfaces section of the User Manual.
 * `MAX_SPINDLE_0_SPEED = 20000` - The maximum RPM that can be manually selected.
   On multi spindle machine there will be entries for each spindle number. Only used by the QtVCP-based user interfaces.
   - _deprecated_ - use the [SPINDLE_n] section instead.
-* `PROGRAM_PREFIX = ~/linuxcnc/nc_files` - The default location for G-code files and the location for user-defined M-codes.
-  This location is searched for the file name before the subroutine path and user M path if specified in the [RS274NGC] section.
+* `PROGRAM_PREFIX = ~/linuxcnc/nc_files` - The default directory for G-code files, named subroutines, and user-defined M-codes.
+  The `PROGRAM_PREFIX` directory is searched before the directories listed in `[RS274]SUBROUTINE_PATH` and `[RS274]USER_M_PATH`.
 * `INTRO_GRAPHIC = emc2.gif` - The image shown on the splash screen.
 * `INTRO_TIME = 5` - The maximum time to show the splash screen, in seconds.
 * `CYCLE_TIME = 100` - Cycle time of the display GUI.
@@ -350,7 +350,7 @@ See <<cha:gmoccapy,GMOCCAPY>> document for GMOCCAPY details.
 . UVW translation example: `GEOMETRY=XYZUVW` causes UVW to move in the coordinate system of the tool and XYZ to move in the coordinate system of the material.
 . Foam-cutting machines (`FOAM = 1`) should specify "XY;UV" or leave the value blank even though this value is presently ignored in foam-cutter mode.
   A future version may define what ";" means, but if it does "XY;UV" will mean the same as the current foam default.
-. Experimental: If the "*!*` character is included in the GEOMETRY string, display points for A, B, C rotations respect the X, Y, Z offsets set by G5x, G92 codes.
+. Experimental: If the exclamation mark (`!`) character is included in the GEOMETRY string, display points for A, B, C rotations respect the X, Y, Z offsets set by G5x, G92 codes.
   Example: Using `GEOMETRY = !CXZ` for a machine with `[TRAJ]COORDINATES=XZC`.
   This provision applies for liveplots only -- G-code previews should be done with zero G5x, G92 offsets.
   This can be facilitated by setting offsets in programs only when task is running as indicated by #<_task> == 1.
@@ -370,7 +370,7 @@ If no `[DISPLAY]GEOMETRY` is included in the INI file, a default is provided by 
   This is useful if you have multiple configurations on one computer.
 * `JOG_AXES =` - The order in which jog keys are assigned to axis letters.
   The left and right arrows are assigned to the first axis letter, up and down to the second, page up/page down to the third, and left and right bracket to the fourth.
-  If unspecified, the default is determined from the [TRAJ]COORDINATES, [DISPLAY]LATHE and [DISPLAY]FOAM values.
+  If unspecified, the default is determined from the `[TRAJ]COORDINATES`, `[DISPLAY]LATHE` and `[DISPLAY]FOAM` values.
 * `JOG_INVERT =` - For each axis letter, the jog direction is inverted.
   The default is "X" for lathes and blank otherwise.
 +
@@ -378,7 +378,7 @@ If no `[DISPLAY]GEOMETRY` is included in the INI file, a default is provided by 
 The settings for `JOG_AXES` and `JOG_INVERT` apply to world mode jogging by axis coordinate letter and are in effect while in world mode after successful homing.
 When operating in joint mode prior to homing, keyboard jog keys are assigned in a fixed sequence: left/right: joint0, up/down: joint1, page up/page down: joint2, left/right bracket: joint3
 
-* `USER_COMMAND_FILE = mycommands.py` - The name of an optional, configuration-specific Python file sourced by the axis GUI instead of the user-specific file `~/.axisrc`.
+* `USER_COMMAND_FILE = mycommands.py` - The name of an optional, configuration-specific Python file sourced by the AXIS GUI instead of the user-specific file `~/.axisrc`.
 
 [NOTE]
 The following `[DISPLAY]` item is used by the TKLinuxCNC interface only.
@@ -491,13 +491,13 @@ if __name__ == "__main__":
 * `ORIENT_OFFSET = 0` - (((ORIENT OFFSET)))
   A float value added to the R word parameter of an <<mcode:m19,M19 Orient Spindle>> operation.
   Used to define an arbitrary zero position regardless of encoder mount orientation.
-* `RS274NGC_STARTUP_CODE = G17 G20 G40 G49 G64 P0.001 G80 G90 G92 G94 G97 G98` - (((RS274NGC STARTUP CODE)))
+* `RS274NGC_STARTUP_CODE = G17 G20 G40 G49 G64 P0.001 G80 G90 G92.1 G94 G97 G98` - (((RS274NGC STARTUP CODE)))
   A string of NC codes that the interpreter is initialized with.
   This is not a substitute for specifying modal G-codes at the top of each NGC file,
   because the modal codes of machines differ, and may be changed by G-code interpreted earlier in the session.
 * `SUBROUTINE_PATH = ncsubroutines:/tmp/testsubs:lathesubs:millsubs` - (((SUBROUTINE PATH)))
   Specifies a colon (:) separated list of up to 10 directories to be searched when single-file subroutines are specified in G-code.
-  These directories are searched after searching [DISPLAY]PROGRAM_PREFIX (if it is specified) and before searching `[WIZARD]WIZARD_ROOT` (if specified).
+  These directories are searched after searching `[DISPLAY]PROGRAM_PREFIX` (if it is specified) and before searching `[WIZARD]WIZARD_ROOT` (if specified).
   The paths are searched in the order that they are listed.
   The first matching subroutine file found in the search is used.
   Directories are specified relative to the current directory for the INI file or as absolute paths.
@@ -511,9 +511,9 @@ if __name__ == "__main__":
 +
 A search is made for each possible user defined function, typically (M100-M199). The search order is:
 +
-. [DISPLAY]PROGRAM_PREFIX (if specified)
-. If [DISPLAY]PROGRAM_PREFIX is not specified, search the default location: nc_files
-. Then search each directory in the list [RS274NGC]USER_M_PATH
+. `[DISPLAY]PROGRAM_PREFIX` (if specified)
+. If `[DISPLAY]PROGRAM_PREFIX` is not specified, search the default location: nc_files
+. Then search each directory in the list `[RS274NGC]USER_M_PATH`.
 +
 The first executable M1__xx__ found in the search is used for each M1__xx__.
 
@@ -1293,28 +1293,38 @@ image::images/encoder-scale.png[align="center"]
 [[sub:ini:sec:spindle-num]]
 === [SPINDLE_<num>] Section(s)(((INI File,Sections,[SPINDLE_<num>] Section(s))))
 
-The _<num>_ specifies the spindle number 0 ... (num_spindles-1)
-The value of _num_spindles_ is set by `[TRAJ]SPINDLES=` .
+The _<num>_ specifies the spindle number 0 ... (num_spindles-1) +
+The value of _num_spindles_ is set by `[TRAJ]SPINDLES=` . +
+By default maximum velocity of the spindle in forward and reverse is approximately
+  2147483000 RPM. +
+By default minimum velocity of the spindle in forward and reverse is 0 RPM. +
+By default the increment is 100 RPM. +
+You change these default by setting the following INI variables:
 
-* `MAX_VELOCITY = 20000`
+[NOTE]
+These settings are for the motion controller component. Control screens can limit
+ these settings further. 
+
+* `MAX_FORWARD_VELOCITY = 20000`
   The maximum spindle speed (in rpm) for the specified spindle. Optional.
-* `MIN_VELOCITY = 3000`
+  This will also set MIN_FORWARD_VELOCITY to the negative value unless overridden.
+* `MIN_FORWARD_VELOCITY = 3000`
   The minimum spindle speed (in rpm) for the specified spindle. Optional.
   Many spindles have a minimum speed below which they should not be run.
   Any spindle speed command below this limit will be /increased/ to this limit.
 * `MAX_REVERSE_VELOCITY = 20000`
-  This setting will default to `MAX_VELOCITY` if omitted.
+  This setting will default to `MAX_FORWARD_VELOCITY` if omitted.
   It can be used in cases where the spindle speed is limited in reverse.
   Set to zero for spindles which must not be run in reverse.
   In this context "max" refers to the absolute magnitude of the spindle speed.
 * `MIN_REVERSE_VELOCITY = 3000``
-  This setting is equivalent to `MIN_VELOCITY` but for reverse spindle rotation.
-  It will default to the MIN_VELOCITY if omitted.
+  This setting is equivalent to `MIN_FORWARD_VELOCITY` but for reverse spindle rotation.
+  It will default to the MIN_FORWARD_VELOCITY if omitted.
 * `INCREMENT = 200`
   Sets the step size for spindle speed increment / decrement commands.
   This can have a different value for each spindle.
   This setting is effective with AXIS and Touchy but note that some
-  GUIs may handle things differently.
+  control screens may handle things differently.
 * `HOME_SEARCH_VELOCITY = 100` - FIXME: Spindle homing not yet working.
   Sets the homing speed (rpm) for the spindle.
   The spindle will rotate at this velocity during the homing sequence until the spindle index is located, at which point the spindle position will be set to zero.

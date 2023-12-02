@@ -80,7 +80,7 @@ sys.excepthook = excepthook
 
 # constants
 #         # gmoccapy  #"
-_RELEASE = " 3.4.2.1"
+_RELEASE = " 3.4.6"
 _INCH = 0                         # imperial units are active
 _MM = 1                           # metric units are active
 
@@ -129,7 +129,6 @@ INFO_ICON = "dialog_information"
 
 
 class gmoccapy(object):
-
     def __init__(self, argv):
 
         # prepare for translation / internationalisation
@@ -154,6 +153,7 @@ class gmoccapy(object):
             }
             #eb_program_label, #eb_blockheight_label {
                 background: rgba(0,0,0,1);
+            }    
             #popup0_win {
                 background: rgba(255, 253, 208, 1);
             }
@@ -239,8 +239,7 @@ class gmoccapy(object):
         self.diameter_mode = False
 
         # the default theme = System Theme we store here to be able to go back to that one later
-        #TODO:
-        #self.default_theme = Gtk.settings_get_default().get_property("Gtk-theme-name")
+        self.default_theme = Gtk.Settings.get_default().get_property("gtk-theme-name")
         self.icon_theme = Gtk.IconTheme()
         self.icon_theme.append_search_path(ICON_THEME_DIR)
         self.icon_theme.append_search_path(USER_ICON_THEME_DIR)
@@ -256,16 +255,14 @@ class gmoccapy(object):
             if arg == "-user_mode":
                 self.user_mode = True
                 self.widgets.tbtn_setup.set_sensitive(False)
-                message = "\n" + _("user mode selected")
-                LOG.debug(message)
+                LOG.debug(_("user mode selected"))
             if arg == "-logo":
                 self.logofile = str(argv[ index + 1 ])
-                message = "\n" + _("logo entry found = {0}").format(self.logofile)
-                LOG.debug(message)
+                LOG.debug(_("logo entry found = {0}").format(self.logofile))
                 self.logofile = self.logofile.strip("\"\'")
                 if not os.path.isfile(self.logofile):
                     self.logofile = None
-                    message = "\n" + _("Logofile entry found, but could not be converted to path.")
+                    message = _("Logofile entry found, but could not be converted to path.")
                     message += "\n" + _("The file path should not contain any spaces")
                     LOG.warning(message)
 
@@ -371,32 +368,6 @@ class gmoccapy(object):
         self.widgets.fontbutton_popup.set_font(self.prefs.getpref("message_font", "sans 10", str))
         self.widgets.chk_use_frames.set_active(self.prefs.getpref("use_frames", True, bool))
 
-        # this sets the background colors of several buttons
-        # the colors are different for the states of the button
-#         self.widgets.tbtn_on.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_estop.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FF0000"))
-#         self.widgets.tbtn_estop.modify_bg(Gtk.StateFlags.NORMAL, Gdk.color_parse("#00FF00"))
-#         self.widgets.rbt_manual.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_mdi.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_auto.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_setup.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_forward.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#00FF00"))
-#         self.widgets.rbt_reverse.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#00FF00"))
-#         self.widgets.rbt_stop.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_view_p.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_view_x.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_view_y.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_view_y2.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.rbt_view_z.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_flood.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#00FF00"))
-#         self.widgets.tbtn_fullsize_preview0.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_fullsize_preview1.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_mist.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#00FF00"))
-#         self.widgets.tbtn_optional_blocks.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_user_tabs.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_view_dimension.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_view_tool_path.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
-#         self.widgets.tbtn_switch_mode.modify_bg(Gtk.StateFlags.ACTIVE, Gdk.color_parse("#FFFF00"))
 
         # should the tool in spindle be reloaded on startup?
         self.widgets.chk_reload_tool.set_active(self.prefs.getpref("reload_tool", True, bool))
@@ -582,7 +553,6 @@ class gmoccapy(object):
         self.spindle_override_max = self.get_ini_info.get_max_spindle_override()
         self.spindle_override_min = self.get_ini_info.get_min_spindle_override()
         self.feed_override_max = self.get_ini_info.get_max_feed_override()
-        self.rapid_override_max = self.get_ini_info.get_max_rapid_override()
         self.dro_actual = self.get_ini_info.get_position_feedback_actual()
 
     def _get_pref_data(self):
@@ -781,8 +751,6 @@ class gmoccapy(object):
         children = self.widgets.hbtb_ref.get_children()
         for child in children:
             self.ref_button_dic[child.get_property("name")] = child
-
-        self.widgets.hbtb_ref.show_all()
 
     def _get_space_label(self, name):
         lbl = Gtk.Label.new("")
@@ -1761,7 +1729,7 @@ class gmoccapy(object):
         self.widgets.spc_spindle.set_value(100)
 
         self.widgets.spc_rapid.set_property("min", 0)
-        self.widgets.spc_rapid.set_property("max", self.rapid_override_max * 100)
+        self.widgets.spc_rapid.set_property("max", 100)
         self.widgets.spc_rapid.set_value(100)
 
         self.widgets.spc_feed.set_property("min", 0)
@@ -1931,6 +1899,9 @@ class gmoccapy(object):
                 for widget in widgetlist:
                     self.widgets[widget].hide()
 
+            if "box_dro_side" in tab_locations:
+                self.widgets.box_dro_side.show()
+
 # Dynamic tabs handling End
 # =============================================================
 
@@ -1973,7 +1944,7 @@ class gmoccapy(object):
             for dirs in names:
                 try:
                     sbdirs = os.listdir(os.path.join(USERTHEMEDIR, dirs))
-                    if 'Gtk-2.0' in sbdirs:
+                    if 'gtk-3.0' in sbdirs:
                         themes.append(dirs)
                 except:
                     pass
@@ -1983,7 +1954,7 @@ class gmoccapy(object):
             for dirs in names:
                 try:
                     sbdirs = os.listdir(os.path.join(THEMEDIR, dirs))
-                    if 'Gtk-2.0' in sbdirs:
+                    if 'gtk-3.0' in sbdirs:
                         themes.append(dirs)
                 except:
                     pass
@@ -1994,10 +1965,9 @@ class gmoccapy(object):
             if theme == theme_name:
                 temp = index + 1
         self.widgets.theme_choice.set_active(temp)
-        #TODO:
-        #settings = Gtk.settings_get_default()
-        #if not theme_name == "Follow System Theme":
-        #    settings.set_string_property("Gtk-theme-name", theme_name, "")
+        settings = Gtk.Settings.get_default()
+        if not theme_name == "Follow System Theme":
+            settings.set_property("gtk-theme-name", theme_name)
 
     def _init_icon_themes(self):
         valid_icon_themes = icon_theme_helper.find_valid_icon_themes([USER_ICON_THEME_DIR, ICON_THEME_DIR])
@@ -2023,9 +1993,16 @@ class gmoccapy(object):
 
     def _init_audio(self):
         # try to add ability for audio feedback to user.
+        audio_enabled = self.prefs.getpref('audio_enabled', True, bool)
+        self.widgets.chk_en_audio.set_active(audio_enabled)
         if _AUDIO_AVAILABLE:
             LOG.info(_("Audio available!"))
-
+            if audio_enabled:
+                self.audio_active = True
+                LOG.info(_("Audio enabled!"))
+            else:
+                self.audio_active = False
+                LOG.info(_("Audio disabled!"))
             # the sounds to play if an error or message rises
             self.alert_sound = "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
             self.error_sound = "/usr/share/sounds/freedesktop/stereo/dialog-error.oga"
@@ -2069,15 +2046,13 @@ class gmoccapy(object):
             self.widgets.tbtn_switch_mode.set_sensitive(False)
             self.widgets.tbtn_switch_mode.set_active(True)
             self.widgets.lbl_replace_mode_btn.hide()
-            #TODO
-            #self.widgets.ntb_jog_JA.set_page(1)
+            self.widgets.ntb_jog_JA.set_current_page(1)
         else:
             self.widgets.gremlin.set_property("enable_dro", self.enable_gremlin_dro )
             self.widgets.gremlin.use_joints_mode = False
             self.widgets.tbtn_switch_mode.hide()
             self.widgets.lbl_replace_mode_btn.show()
-            #TODO
-            #self.widgets.ntb_jog_JA.set_page(0)
+            self.widgets.ntb_jog_JA.set_current_page(0)
 
     # init the function to hide the cursor
     def _init_hide_cursor(self):
@@ -2437,7 +2412,7 @@ class gmoccapy(object):
             text = _("Unknown error type and no error text given")
         self.notification.add_message(text, icon)
 
-        if _AUDIO_AVAILABLE:
+        if self.audio_active:
             if kind == 1 or kind == 11:
                 self._on_play_sound(None, "error")
             else:
@@ -2849,16 +2824,14 @@ class gmoccapy(object):
             self.widgets.gremlin.set_property("enable_dro", True)
             self.widgets.gremlin.use_joints_mode = True
             self.widgets.tbtn_switch_mode.set_active(True)
-            #TODO
-            #self.widgets.ntb_jog_JA.set_page(1)
+            self.widgets.ntb_jog_JA.set_current_page(1)
             state = False
         else:
             if not self.widgets.tbtn_fullsize_preview0.get_active():
                 self.widgets.gremlin.set_property("enable_dro", self.enable_gremlin_dro)
             self.widgets.gremlin.use_joints_mode = False
             self.widgets.tbtn_switch_mode.set_active(False)
-            #TODO
-            #self.widgets.ntb_jog_JA.set_page(0)
+            self.widgets.ntb_jog_JA.set_current_page(0)
             state = True
         if self.stat.task_state != linuxcnc.STATE_ON:
             state = False
@@ -2934,6 +2907,8 @@ class gmoccapy(object):
         # check how to start the GUI
         start_as = "rbtn_" + self.prefs.getpref("screen1", "window", str)
         self.widgets[start_as].set_active(True)
+        self.widgets.window1.set_decorated(not self.prefs.getpref("hide_titlebar", False, bool))
+        self.widgets.chkbtn_hide_titlebar.set_active(not self.widgets.window1.get_decorated())
         if start_as == "rbtn_fullscreen":
             Timer(2, self.widgets.window1.fullscreen ).start()
             #self.widgets.window1.fullscreen()
@@ -2944,7 +2919,6 @@ class gmoccapy(object):
             self.ypos = int(self.prefs.getpref("y_pos", 30, float))
             self.width = int(self.prefs.getpref("width", 979, float))
             self.height = int(self.prefs.getpref("height", 750, float))
-
             # set the adjustments according to Window position and size
             self.widgets.adj_x_pos.set_value(self.xpos)
             self.widgets.adj_y_pos.set_value(self.ypos)
@@ -3306,8 +3280,9 @@ class gmoccapy(object):
     # Notification stuff.
     def _init_notification(self):
         start_as = "rbtn_" + self.prefs.getpref("screen1", "window", str)
-        #TODO
-        xpos, ypos = (10,10)#self.widgets.window1.window.get_origin()
+        #TODO probably xpos and ypos should be added to notification's properties 'x_pos' and 'y_pos*.
+        # But then the behavior should be defined what should happen if the window is moved.
+        xpos, ypos = self.widgets.window1.get_position()
         self.notification.set_property('x_pos', self.widgets.adj_x_pos_popup.get_value())
         self.notification.set_property('y_pos', self.widgets.adj_y_pos_popup.get_value())
         self.notification.set_property('message_width', self.widgets.adj_width_popup.get_value())
@@ -3504,6 +3479,12 @@ class gmoccapy(object):
 #                 self.diameter_mode = True
 
     def _update_toolinfo(self, tool):
+        LOG.debug("Tool is now %s".format(tool))
+        if "G43" in self.active_gcodes:
+            LOG.debug("G43 is active")
+        else:
+            LOG.debug("G43 is not active")
+
         toolinfo = self.widgets.tooledit1.get_toolinfo(tool)
         if toolinfo:
             # Doku
@@ -4420,17 +4401,15 @@ class gmoccapy(object):
 
     # choose a theme to apply
     def on_theme_choice_changed(self, widget):
-        return
-        #TODO:
-        #theme = widget.get_active_text()
-        #if theme == None:
-        #    return
-        #self.prefs.putpref('Gtk_theme', theme)
-        #settings = Gtk.settings_get_default()
-        ##TODO:
-        # if theme == "Follow System Theme":
-        #    theme = self.default_theme
-        #settings.set_string_property("Gtk-theme-name", theme, "")
+        active = widget.get_active_iter()
+        if active is None:
+            return
+        theme = widget.get_model()[active][0]
+        self.prefs.putpref('Gtk_theme', theme)
+        if theme == "Follow System Theme":
+            theme = self.default_theme
+        settings = Gtk.Settings.get_default()
+        settings.set_property("gtk-theme-name", theme)
 
     def _set_icon_theme(self, name):
         LOG.debug(f"Setting icon theme '{name}'")
@@ -4665,18 +4644,23 @@ class gmoccapy(object):
             self.prefs.putpref("screen1", "maximized")
         else:
             self.widgets.window1.unmaximize()
+        self.widgets.chkbtn_hide_titlebar.set_sensitive(widget.get_active())
 
     def on_rbtn_window_toggled(self, widget):
-        self.widgets.spbtn_x_pos.set_sensitive(widget.get_active())
-        self.widgets.spbtn_y_pos.set_sensitive(widget.get_active())
-        self.widgets.spbtn_width.set_sensitive(widget.get_active())
-        self.widgets.spbtn_height.set_sensitive(widget.get_active())
+        self.widgets.grid_main_window.set_sensitive(widget.get_active())
+        self.widgets.chkbtn_hide_titlebar.set_sensitive(widget.get_active())
         # we have to check also if the window is active, because the button is toggled the first time
         # before the window is shown
         if widget.get_active() and self.widgets.window1.is_active():
+            self.widgets.window1.set_decorated(not self.widgets.chkbtn_hide_titlebar.get_active())
             self.widgets.window1.move(self.xpos, self.ypos)
             self.widgets.window1.resize(self.width, self.height)
             self.prefs.putpref("screen1", "window")
+
+    def on_chkbtn_hide_titlebar_toggled(self, widget):
+        self.widgets.window1.set_decorated(not widget.get_active())
+        self.widgets.window1.move(self.xpos, self.ypos)
+        self.prefs.putpref("hide_titlebar", widget.get_active())
 
     def on_adj_x_pos_value_changed(self, widget, data=None):
         if not self.initialized:
@@ -4786,9 +4770,6 @@ class gmoccapy(object):
     def on_grid_size_value_changed(self, widget, data=None):
         self.widgets.gremlin.set_property('grid_size', widget.get_value())
         self.prefs.putpref('grid_size', widget.get_value(), float)
-
-    def on_tbtn_log_actions_toggled(self, widget, data=None):
-        self.prefs.putpref("log_actions", widget.get_active())
 
     def on_chk_show_dro_toggled(self, widget, data=None):
         state = widget.get_active()
@@ -5154,7 +5135,7 @@ class gmoccapy(object):
         else:
             self.widgets.ntb_info.hide()
             self.widgets.ntb_info.set_size_request(-1, -1)
-        self.widgets.tbl_search.show()
+        self.widgets.grid_search.show()
         self.gcodeerror = ""
         self.file_changed = False
         # deactivate the mode buttons, so changing modes is not possible while we are editing
@@ -5228,7 +5209,7 @@ class gmoccapy(object):
             self.widgets.ntb_info.set_current_page(0)
             self.widgets.ntb_info.show()
             self.widgets.ntb_info.set_size_request(-1, -1)
-            self.widgets.tbl_search.hide()
+            self.widgets.grid_search.hide()
 
     # make a new file
     def on_btn_new_clicked(self, widget, data=None):
@@ -5280,6 +5261,10 @@ class gmoccapy(object):
     def on_btn_from_line_clicked(self, widget, data=None):
         self.dialogs.restart_dialog(self)
 
+    def on_chk_en_audio_toggled(self, widget, data=None):
+        self.prefs.putpref("audio_enabled", widget.get_active())
+        self.audio_active = widget.get_active()
+
     def on_change_sound(self, widget, sound=None):
         file = widget.get_filename()
         if file:
@@ -5289,6 +5274,8 @@ class gmoccapy(object):
             else:
                 self.alert_sound = file
                 self.prefs.putpref("audio_alert", file)
+            self.audio.set_sound(file)
+            self.audio.run()
 
     def on_tbtn_switch_mode_toggled(self, widget, data=None):
         if widget.get_active():
@@ -5436,7 +5423,7 @@ class gmoccapy(object):
 
     def _on_play_sound(self, widget, sound = None):
         LOG.debug("_on_play_sound {0} {1} {2}".format(self,widget,sound))
-        if _AUDIO_AVAILABLE and sound:
+        if self.audio_active and sound:
             if sound == "error":
                 self.audio.set_sound(self.error_sound)
             elif sound == "alert":
@@ -5504,6 +5491,14 @@ class gmoccapy(object):
         self.widgets.lbl_blockheight.set_text("blockheight = {0:.3f}".format(pin.get()))
         if self.lathe_mode:
             self.widgets.lbl_blockheight.hide()
+
+    def _optional_blocks(self, pin):
+        LOG.debug("Received a signal from pin {0} with state = {1}".format(pin.name, pin.get()))
+        self.widgets["tbtn_optional_blocks"].set_active(pin.get())
+
+    def _blockdelete(self, pin):
+        LOG.debug("Received a signal from pin {0} with state = {1}".format(pin.name, pin.get()))
+        self.command.set_optional_stop(pin.get())
 
 # =========================================================
 # The actions of the buttons
@@ -5714,6 +5709,13 @@ class gmoccapy(object):
         # make a pin to set ignore limits
         pin = self.halcomp.newpin("ignore-limits", hal.HAL_BIT, hal.HAL_IN)
         hal_glib.GPin(pin).connect("value_changed", self._ignore_limits)
+
+        # make pins to set optinal stops and block delete
+        pin = self.halcomp.newpin("optional-stop", hal.HAL_BIT, hal.HAL_IN)
+        hal_glib.GPin(pin).connect("value_changed", self._optional_blocks)
+        pin = self.halcomp.newpin("blockdelete", hal.HAL_BIT, hal.HAL_IN)
+        hal_glib.GPin(pin).connect("value_changed", self._blockdelete)
+
 
     def _popup_format_callback(self, s, pinType):
         start = 0;

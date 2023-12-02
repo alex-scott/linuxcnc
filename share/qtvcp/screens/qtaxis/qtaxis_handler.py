@@ -15,6 +15,7 @@ from qtvcp.widgets.state_led import StateLED as LED
 from qtvcp.lib.keybindings import Keylookup
 from qtvcp.lib.toolbar_actions import ToolBarActions
 from qtvcp.widgets.stylesheeteditor import  StyleSheetEditor as SSE
+from qtvcp.widgets.bar import HalBar
 from qtvcp.core import Status, Action, Info, Qhal
 
 # Set up logging
@@ -23,6 +24,8 @@ LOG = logger.getLogger(__name__)
 
 # Set the log level for this module
 #LOG.setLevel(logger.INFO) # One of DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+VERSION = '1.0'
 
 ###########################################
 # **** instantiate libraries section **** #
@@ -119,6 +122,7 @@ class HandlerClass:
         TOOLBAR.configure_action(self.w.actionOptionalStop, 'optional_stop')
         TOOLBAR.configure_action(self.w.actionZoomIn, 'zoom_in')
         TOOLBAR.configure_action(self.w.actionZoomOut, 'zoom_out')
+        TOOLBAR.configure_action(self.w.actionLargeDRO, 'large_dro')
         if not INFO.MACHINE_IS_LATHE:
             TOOLBAR.configure_action(self.w.actionFrontView, 'view_x')
             TOOLBAR.configure_action(self.w.actionRotatedView, 'view_z2')
@@ -171,6 +175,11 @@ class HandlerClass:
             self.w.dro_label_g53_y.setVisible(False)
 
         self.restoreSettings()
+
+        message = "--- QtAxis Version {} on Linuxcnc {} ---".format(
+            VERSION, STATUS.get_linuxcnc_version())
+        STATUS.emit('update-machine-log', message, None)
+
         #QtWidgets.QApplication.instance().event_filter.focusIn.connect(self.focusInChanged)
 
     def processed_key_event__(self,receiver,event,is_pressed,key,code,shift,cntrl):
@@ -256,7 +265,7 @@ class HandlerClass:
 
     def update_spindle(self,w,data):
         self.w.rpm_bar.setInvertedAppearance(bool(data<0))
-        self.w.rpm_bar.setFormat('{0:d} RPM'.format(int(data)))
+        self.w.rpm_label.setText('{0:d} RPM'.format(int(data)))
         self.w.rpm_bar.setValue(abs(int(data)))
 
     def update_jog_pins(self, data):
@@ -556,8 +565,12 @@ class HandlerClass:
         self.w.led.hal_init(HAL_NAME = 'spindle_is_at_speed')
 
         # make a spindle speed bar
-        self.w.rpm_bar = QtWidgets.QProgressBar()
+        #self.w.frame = QtWidgets.QProgressBar()
+        self.w.rpm_bar = HalBar()
+        self.w.rpm_bar.setMinimumWidth (150)
         self.w.rpm_bar.setRange(0, INFO.MAX_SPINDLE_SPEED)
+
+        self.w.rpm_label = QtWidgets.QLabel()
 
         # containers
         w = QtWidgets.QWidget()
@@ -565,6 +578,7 @@ class HandlerClass:
 
         hbox = QtWidgets.QHBoxLayout()
         hbox.setContentsMargins(0,0,0,0)
+        hbox.addWidget(self.w.rpm_label)
         hbox.addWidget(self.w.rpm_bar)
         hbox.addWidget(self.w.led)
         w.setLayout(hbox)

@@ -42,6 +42,8 @@ class QTPanel():
         self.window['panel_'] = self
         self._screenOptions = None
         self._geo_string = ''
+        self.PATH = path
+        window._VCPWindowList.append(window)
 
         # see if a screenoptions widget is present
         # if it is then initiate the preference file
@@ -88,13 +90,25 @@ class QTPanel():
                     pName = name.replace(' ','_')
                     window[pName] = window.makeMainPage(name)
 
-                    hndlr = os.path.join(path.PANELDIR , cmd, cmd+'_handler.py')
-                    if os.path.exists(hndlr):
+                    # search for handler path and load if available
+                    hndlr = self.PATH.find_embed_handler_path(cmd)
+                    if hndlr is not True and os.path.exists(hndlr):
                         window[pName].load_extension(hndlr)
 
-                    window[pName].instance(os.path.join(path.PANELDIR , cmd, cmd+'.ui'))
-                    window[pName].handler_instance.initialized__()
+                        # do any class patching now #TODO not tested feature
+                        if "class_patch__" in dir(window[pName].handler_instance):
+                            window[pName].handler_instance.class_patch__()
 
+                    # search for ui path and load if available
+                    uipath = self.PATH.find_embed_panel_path(cmd)
+                    window[pName].instance(uipath)
+                    window._VCPWindowList.append(window[pName])
+
+                    # initialize handler if available
+                    if hndlr is not True and os.path.exists(hndlr):
+                        window[pName].handler_instance.initialized__()
+
+                    # record HAL component base name because we are going to change it
                     oldname = halcomp.comp.getprefix()
                     halcomp.comp.setprefix('{}.{}'.format(oldname,cmd))
 
@@ -104,7 +118,10 @@ class QTPanel():
                             idname = widget.objectName()
                             LOG.verbose('{}: HAL-ified widget: {}'.format(name.upper(), idname))
                             if not isinstance(widget, ScreenOptions):
-                                widget.hal_init()
+                                # give panel name to halified widgets
+                                widget.hal_init(INSTANCE_NAME= pName)
+
+                    # restore HAL component name
                     halcomp.comp.setprefix(oldname)
 
         # parse for HAL objects:
