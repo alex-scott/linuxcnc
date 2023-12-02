@@ -224,10 +224,10 @@ class gmoccapy(object):
         self.all_homed = False         # will hold True if all axis are homed
         self.faktor = 1.0              # needed to calculate velocities
 
-        self.xpos = 40        # The X Position of the main Window
-        self.ypos = 30        # The Y Position of the main Window
-        self.width = 979      # The width of the main Window
-        self.height = 750     # The height of the main Window
+        self.xpos = 0        # The X Position of the main Window
+        self.ypos = 0        # The Y Position of the main Window
+        self.width = 800     # The width of the main Window
+        self.height = 600     # The height of the main Window
 
         self.gcodeerror = ""   # we need this to avoid multiple messages of the same error
 
@@ -283,6 +283,16 @@ class gmoccapy(object):
         self._get_pref_data()
 
         self.tool_measure_OK = self._check_toolmeasurement()
+
+        ### 800x600 disable widgets
+
+        # self.widgets.box_spindle.hide()
+        # self.widgets.box_cooling.hide()
+        # self.widgets.vbx_overrides.hide()
+        # self.widgets.frm_jogging.hide()
+
+
+
 
         # make all widgets we create dynamically
         self._make_DRO()
@@ -453,9 +463,9 @@ class gmoccapy(object):
         # so every thing is ready to start
         widgetlist = ["rbt_manual", "rbt_mdi", "rbt_auto", "btn_homing", "btn_touch", "btn_tool",
                       "ntb_jog", "ntb_jog_JA", "vbtb_jog_incr", "hbox_jog_vel",
-                      "spc_feed", "btn_feed_100", "rbt_forward", "btn_index_tool",
-                      "rbt_reverse", "rbt_stop", "tbtn_flood", "tbtn_mist", "btn_change_tool",
-                      "btn_select_tool_by_no", "btn_spindle_100", "spc_rapid", "spc_spindle",
+                      "rbt_forward", "btn_index_tool",
+                      "rbt_reverse", "rbt_stop",  "btn_change_tool",
+                      "btn_select_tool_by_no", "btn_spindle_100", "spc_spindle",
                       "btn_tool_touchoff_x", "btn_tool_touchoff_z"
         ]
         #
@@ -1728,19 +1738,7 @@ class gmoccapy(object):
         self.widgets.spc_spindle.set_property("max", self.spindle_override_max * 100)
         self.widgets.spc_spindle.set_value(100)
 
-        self.widgets.spc_rapid.set_property("min", 0)
-        self.widgets.spc_rapid.set_property("max", 100)
-        self.widgets.spc_rapid.set_value(100)
 
-        self.widgets.spc_feed.set_property("min", 0)
-        self.widgets.spc_feed.set_property("max", self.feed_override_max * 100)
-        self.widgets.spc_feed.set_value(100)
-
-        # the scales to apply to the count of the hardware mpg wheel, to avoid to much turning
-        self.widgets.adj_scale_jog_vel.set_value(self.scale_jog_vel)
-        self.widgets.adj_scale_spindle_override.set_value(self.scale_spindle_override)
-        self.widgets.adj_scale_feed_override.set_value(self.scale_feed_override)
-        self.widgets.adj_scale_rapid_override.set_value(self.scale_rapid_override)
 
         # set and get all information for turtle jogging
         # self.rabbit_jog will be used in future to store the last value
@@ -1844,27 +1842,6 @@ class gmoccapy(object):
 
             if "ntb_preview" in tab_locations:
                 self.widgets.ntb_preview.set_property( "show-tabs", True )
-
-            # This is normally only used for the plasma screen layout
-            if "box_coolant_and_spindle" in tab_locations:
-                widgetlist = ["box_spindle", "box_cooling", "frm_spindle"]
-                for widget in widgetlist:
-                    self.widgets[widget].hide()
-
-            if "box_cooling" in tab_locations:
-                widgetlist = ["frm_cooling"]
-                for widget in widgetlist:
-                    self.widgets[widget].hide()
-
-            if "box_spindle" in tab_locations:
-                widgetlist = ["frm_spindle"]
-                for widget in widgetlist:
-                    self.widgets[widget].hide()
-
-            if "box_vel_info" in tab_locations:
-                widgetlist = ["vbx_overrides", "frm_rapid_override", "frm_feed_override"]
-                for widget in widgetlist:
-                    self.widgets[widget].hide()
 
             if "box_custom_1" in tab_locations:
                 self.widgets.box_custom_1.show()
@@ -2386,7 +2363,6 @@ class gmoccapy(object):
                 self._switch_to_g7(True)
 
         self._update_vel()
-        self._update_coolant()
         self._update_spindle()
         self._update_halui_pin()
         self._update_vc()
@@ -2556,7 +2532,7 @@ class gmoccapy(object):
             return
 
         widgetlist = ["ntb_jog", "btn_from_line",
-                      "tbtn_flood", "tbtn_mist", "rbt_forward", "rbt_reverse", "rbt_stop",
+                      "rbt_forward", "rbt_reverse", "rbt_stop",
                       "btn_load", "btn_edit", "tbtn_optional_blocks", "btn_reload"
         ]
         if not self.widgets.rbt_hal_unlock.get_active() and not self.user_mode:
@@ -2653,9 +2629,9 @@ class gmoccapy(object):
 
     def on_hal_status_state_off(self, widget):
         widgetlist = ["rbt_manual", "rbt_mdi", "rbt_auto", "btn_homing", "btn_touch", "btn_tool",
-                      "hbox_jog_vel", "ntb_jog_JA", "vbtb_jog_incr", "spc_feed", "btn_feed_100", "rbt_forward", "btn_index_tool",
-                      "rbt_reverse", "rbt_stop", "tbtn_flood", "tbtn_mist", "btn_change_tool", "btn_select_tool_by_no",
-                      "btn_spindle_100", "spc_rapid", "spc_spindle",
+                      "hbox_jog_vel", "ntb_jog_JA", "vbtb_jog_incr", "rbt_forward", "btn_index_tool",
+                      "rbt_reverse", "rbt_stop", "btn_change_tool", "btn_select_tool_by_no",
+                      "btn_spindle_100", "spc_spindle",
                       "btn_tool_touchoff_x", "btn_tool_touchoff_z"
         ]
         self._sensitize_widgets(widgetlist, False)
@@ -2671,9 +2647,9 @@ class gmoccapy(object):
 
     def on_hal_status_state_on(self, widget):
         widgetlist = ["rbt_manual", "btn_homing", "btn_touch", "btn_tool",
-                      "ntb_jog", "spc_feed", "btn_feed_100", "rbt_forward",
-                      "rbt_reverse", "rbt_stop", "tbtn_flood", "tbtn_mist",
-                      "btn_spindle_100", "spc_rapid", "spc_spindle"
+                      "ntb_jog", "rbt_forward",
+                      "rbt_reverse", "rbt_stop",
+                      "btn_spindle_100",  "spc_spindle"
         ]
         self._sensitize_widgets(widgetlist, True)
         if not self.widgets.tbtn_on.get_active():
@@ -2915,10 +2891,10 @@ class gmoccapy(object):
         elif start_as == "rbtn_maximized":
             self.widgets.window1.maximize()
         else:
-            self.xpos = int(self.prefs.getpref("x_pos", 40, float))
-            self.ypos = int(self.prefs.getpref("y_pos", 30, float))
-            self.width = int(self.prefs.getpref("width", 979, float))
-            self.height = int(self.prefs.getpref("height", 750, float))
+            self.xpos = int(self.prefs.getpref("x_pos", 0, float))
+            self.ypos = int(self.prefs.getpref("y_pos", 0, float))
+            self.width = int(self.prefs.getpref("width", 800, float))
+            self.height = int(self.prefs.getpref("height", 600, float))
             # set the adjustments according to Window position and size
             self.widgets.adj_x_pos.set_value(self.xpos)
             self.widgets.adj_y_pos.set_value(self.ypos)
@@ -3012,9 +2988,9 @@ class gmoccapy(object):
 
     def _update_widgets(self, state):
         widgetlist = ["rbt_manual", "btn_homing", "btn_touch", "btn_tool",
-                      "hbox_jog_vel", "ntb_jog_JA", "vbtb_jog_incr", "spc_feed", "btn_feed_100", "rbt_forward", "btn_index_tool",
-                      "rbt_reverse", "rbt_stop", "tbtn_flood", "tbtn_mist", "btn_change_tool", "btn_select_tool_by_no",
-                      "btn_spindle_100", "spc_rapid", "spc_spindle",
+                      "hbox_jog_vel", "ntb_jog_JA", "vbtb_jog_incr",  "rbt_forward", "btn_index_tool",
+                      "rbt_reverse", "rbt_stop",  "btn_change_tool", "btn_select_tool_by_no",
+                      "btn_spindle_100",  "spc_spindle",
                       "btn_tool_touchoff_x", "btn_tool_touchoff_z"
         ]
         self._sensitize_widgets(widgetlist, state)
@@ -3406,23 +3382,6 @@ class gmoccapy(object):
         self.widgets.lbl_active_feed.set_label(feed_str)
         self.widgets.lbl_feed_act.set_text(real_feed_str)
 
-    def _update_coolant(self):
-        if self.stat.flood:
-            if not self.widgets.tbtn_flood.get_active():
-                self.widgets.tbtn_flood.set_active(True)
-                self.widgets.tbtn_flood.set_image(self.widgets.img_coolant_on)
-        else:
-            if self.widgets.tbtn_flood.get_active():
-                self.widgets.tbtn_flood.set_active(False)
-                self.widgets.tbtn_flood.set_image(self.widgets.img_coolant_off)
-        if self.stat.mist:
-            if not self.widgets.tbtn_mist.get_active():
-                self.widgets.tbtn_mist.set_active(True)
-                self.widgets.tbtn_mist.set_image(self.widgets.img_mist_on)
-        else:
-            if self.widgets.tbtn_mist.get_active():
-                self.widgets.tbtn_mist.set_active(False)
-                self.widgets.tbtn_mist.set_image(self.widgets.img_mist_off)
 
     def _update_halui_pin(self):
         if self.spindle_override != self.stat.spindle[0]['override']:
@@ -3433,13 +3392,11 @@ class gmoccapy(object):
             self.initialized = True
         if self.feed_override != self.stat.feedrate:
             self.initialized = False
-            self.widgets.spc_feed.set_value(self.stat.feedrate * 100)
             self.feed_override = self.stat.feedrate
             self._popup_pin_changed(":feed-override", self.popup_feed_format)
             self.initialized = True
         if self.rapidrate != self.stat.rapidrate:
             self.initialized = False
-            self.widgets.spc_rapid.set_value(self.stat.rapidrate * 100)
             self.rapidrate = self.stat.rapidrate
             self.initialized = True
 
@@ -4106,49 +4063,10 @@ class gmoccapy(object):
         self.widgets.spindle_feedback_bar.set_property("max", self.max_spindle_rev)
 
 # =========================================================
-# Coolant an mist coolant button
-    def on_tbtn_flood_toggled(self, widget, data=None):
-        if self.stat.flood and self.widgets.tbtn_flood.get_active():
-            return
-        elif not self.stat.flood and not self.widgets.tbtn_flood.get_active():
-            return
-        elif self.widgets.tbtn_flood.get_active():
-            self.widgets.tbtn_flood.set_image(self.widgets.img_coolant_on)
-            self.command.flood(linuxcnc.FLOOD_ON)
-        else:
-            self.widgets.tbtn_flood.set_image(self.widgets.img_coolant_off)
-            self.command.flood(linuxcnc.FLOOD_OFF)
-
-    def on_tbtn_mist_toggled(self, widget, data=None):
-        if self.stat.mist and self.widgets.tbtn_mist.get_active():
-            return
-        elif not self.stat.mist and not self.widgets.tbtn_mist.get_active():
-            return
-        elif self.widgets.tbtn_mist.get_active():
-            self.widgets.tbtn_mist.set_image(self.widgets.img_mist_on)
-            self.command.mist(linuxcnc.MIST_ON)
-        else:
-            self.widgets.tbtn_mist.set_image(self.widgets.img_mist_off)
-            self.command.mist(linuxcnc.MIST_OFF)
 
 # =========================================================
 # feed stuff
-    def on_spc_feed_value_changed(self, widget, data=None):
-        if not self.initialized:
-            return
-        value = widget.get_value() / 100
-        self.feed_override = value
-        self.command.feedrate(value)
 
-    def on_btn_feed_100_clicked(self, widget, data=None):
-        self.widgets.spc_feed.set_value(100)
-
-    def on_spc_rapid_value_changed(self, widget, data=None):
-        if not self.initialized:
-            return
-        value = widget.get_value() / 100
-        self.rapidrate = value
-        self.command.rapidrate(value)
 
     # this are the MDI thinks we need
     def on_btn_delete_clicked(self, widget, data=None):
@@ -4630,7 +4548,6 @@ class gmoccapy(object):
     def on_adj_scale_spindle_override_value_changed(self, widget, data=None):
         self.prefs.putpref("scale_spindle_override", widget.get_value(), float)
         self.scale_spindle_override = widget.get_value()
-
     def on_rbtn_fullscreen_toggled(self, widget):
         if widget.get_active():
             self.widgets.window1.fullscreen()
@@ -5323,6 +5240,8 @@ class gmoccapy(object):
                             and not self.halcomp["rapid.rapid-override.count-enable"]:
             self._check_counts(counts)
 
+        if widget == "spc_rapid"  or widget == "spc_feed": return
+
         val = self.widgets[widget].get_value() + difference
         if val < 0:
             val = 0
@@ -5366,11 +5285,9 @@ class gmoccapy(object):
                 self.widgets.btn_spindle_100.hide()
             else:
                 self.widgets.btn_spindle_100.show()
-        if widget == "spc_feed":
-            if pin.get():
-                self.widgets.btn_feed_100.hide()
-            else:
-                self.widgets.btn_feed_100.show()
+        if widget == "spc_feed": pass
+
+        if widget == "spc_rapid" or widget == "spc_feed": return
         # widget can also be spc_lin_jog_vel and spc_rapid
         self.widgets[widget].hide_button(pin.get())
 
@@ -5402,6 +5319,8 @@ class gmoccapy(object):
             value = self.widgets[widget].get_property("min") + (range * percentage)
         except:
             value = 0
+
+        if widget == "spc_radid" or widget == "spc_feed": return
         self.widgets[widget].set_value(value)
 
         # special case of jog_vel, as we have to take care of both modes,

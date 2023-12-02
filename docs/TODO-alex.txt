@@ -1,0 +1,14 @@
+
+
+GMOCCAPY
+  1 - moved buttons left
+
+buttons changed from  90 x 56 to 72 x 46
+
+
+
+- removed cooling tab
+- removed overrides tab
+- remove jogging tab, replace to jogging speed indicator, controlled by F+ / F- ?
+
+- check buttons position match
