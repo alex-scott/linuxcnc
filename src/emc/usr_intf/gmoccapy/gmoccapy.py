@@ -2393,6 +2393,8 @@ class gmoccapy(object):
 
         self.widgets.lbl_time.set_label(strftime("%H:%M:%S") + "\n" + strftime("%d.%m.%Y"))
 
+        self.popup_check()
+
         # keep the timer running
         return True
 
@@ -5773,24 +5775,23 @@ class gmoccapy(object):
     popup_disabled = False
     popup_delay = 2.0
     popup_hide_at : float  = 0.0
+    popup_active = False
 
     # special format callbacks
     popup_feed_format = None
     popup_spindle_format = None
 
-    def popup_toggle(self, enabled):
-        self.popup_disabled = not enabled
-
     def popup_check(self):
-        if self.popup_hide_at <= time():
+        if self.popup_active and self.popup_hide_at <= time():
             self.widgets.popup0_win.hide()
+            self.popup_active = False
 
     def popup_show(self, label: str):
         if self.popup_disabled: return
+        self.popup_hide_at = time() + self.popup_delay
         self.widgets.popup0_lbl.set_label(label)
         self.widgets.popup0_win.show()
-        self.popup_hide_at = time() + self.popup_delay
-        Timer(self.popup_delay + 0.01, lambda: self.popup_check()).start()
+        self.popup_active = True
 
     def popup_hide(self):
         self.widgets.popup0_win.hide()
