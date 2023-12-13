@@ -513,6 +513,8 @@ class gmoccapy(object):
                 self.notification.add_message(_("Error in ") + css_file + "\n" \
                     + _("Please check the console output."), ALERT_ICON)
 
+        self.updateGears()
+
 
 
     def _get_ini_data(self):
@@ -5718,6 +5720,21 @@ class gmoccapy(object):
         pin = self.halcomp.newpin("blockdelete", hal.HAL_BIT, hal.HAL_IN)
         hal_glib.GPin(pin).connect("value_changed", self._blockdelete)
 
+        # alex
+        self.halcomp.newpin("gear.0.v", hal.HAL_S32, hal.HAL_OUT)
+        self.halcomp.newpin("gear.1.v", hal.HAL_S32, hal.HAL_OUT)
+        self.halcomp.newpin("gear.v", hal.HAL_S32, hal.HAL_OUT)
+
+        pin = self.halcomp.newpin("gear.0.at-speed", hal.HAL_BIT, hal.HAL_IN)
+        #hal_glib.GPin(pin).connect("value_changed", )
+        pin = self.halcomp.newpin("gear.1.at-speed", hal.HAL_BIT, hal.HAL_IN)
+
+        self.halcomp.newpin("gear.rps", hal.HAL_FLOAT, hal.HAL_OUT)
+        self.halcomp.newpin("gear.rps-1hz", hal.HAL_FLOAT, hal.HAL_OUT)
+        self.halcomp.newpin("gear.min-rps", hal.HAL_FLOAT, hal.HAL_OUT)
+        self.halcomp.newpin("gear.max-rps", hal.HAL_FLOAT, hal.HAL_OUT)
+
+
 
     def _popup_format_callback(self, s, pinType):
         start = 0;
@@ -5848,6 +5865,66 @@ class gmoccapy(object):
                 self.popup_feed_format = self._popup_format_callback(message[0], message[1])
             elif pin_name == ":spindle-override":
                 self.popup_spindle_format = self._popup_format_callback(message[0], message[1])
+
+    gearIdx = [ 0, 0 ]
+    gears = [
+            [1, 4],
+            [250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3150],
+    ]
+    btmGearsLabel00 = ["63", "80", "100", "125", "160", "200", "250", "320", "400", "500", "625", "800"]
+
+    def on_btn_gear0_clicked(self, widget):
+        self.gearIdx[0]+=1
+        if self.gearIdx[0] >= len(self.gears[0]) :
+            self.gearIdx[0] = 0
+        self.updateGears()
+        pass
+
+    def on_btn_gear1_clicked(self, widget):
+        self.gearIdx[1]+=1
+        if self.gearIdx[1] >= len(self.gears[1]) :
+            self.gearIdx[1] = 0
+        self.updateGears()
+        pass
+
+    def updateGears(self):
+
+        gear0Value = self.gears[0][self.gearIdx[0]]
+        gear1Value = self.gears[1][self.gearIdx[1]]
+
+        self.halcomp['gear.0.v'] = gear0Value
+        self.halcomp['gear.1.v'] = gear1Value
+        v = gear1Value / gear0Value
+        self.halcomp['gear.v'] = v
+        self.halcomp['gear.rps'] = v / 60
+
+        ## speed-in-rps / gear-rps-1hz = hz
+        self.halcomp['gear.rps-1hz'] = (v / 60 ) / 50
+        self.halcomp['gear.min-rps'] = ( 5 * v / 50 ) / 60
+        self.halcomp['gear.max-rps'] = ( 80 * v / 50 ) / 60
+
+        gear1V = int( gear1Value / gear0Value )
+        if gear1V > 100: gear1V = int(gear1V / 5 )  * 5
+
+        #  ↖ ↗ ⇖ ⇗ ↑ ↓
+        leftLbl = "↖" if gear0Value == 1 else "↗"
+
+        self.widgets.btn_gear0.set_label( leftLbl )
+        self.widgets.btn_gear1.set_label( str(  int( gear1V ) ) )
+
+    def on_btn_m6_clicked(self, widget):
+        pass
+    #
+    #     global topGearIdx
+    #     topGearIdx = topGearIdx + 1
+    #     if topGearIdx >= len(topGears): topGearIdx = 0
+    #     self.update()
+    #
+    # def _down_clicked(self):
+    #     global btmGearIdx
+    #     btmGearIdx = btmGearIdx + 1
+    #     if btmGearIdx >= len(btmGears): btmGearIdx = 0
+    #     self.update()
 
 # Hal Pin Handling End
 # =========================================================

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.40.0 -->
+<!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.16"/>
   <requires lib="gladevcp" version="0.0"/>
@@ -567,6 +567,10 @@
     <property name="can-focus">False</property>
   </object>
   <object class="GtkImage" id="img_tools">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+  </object>
+  <object class="GtkImage" id="img_tools1">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
   </object>
@@ -6069,11 +6073,20 @@ Date</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="lbl_space_0">
+                  <object class="GtkButton" id="btn_m6">
+                    <property name="label" translatable="yes">M6</property>
+                    <property name="use-action-appearance">False</property>
+                    <property name="name">btn_m6</property>
                     <property name="width-request">90</property>
                     <property name="height-request">56</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                    <property name="tooltip-text" translatable="yes">change tool</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="image-position">top</property>
+                    <signal name="clicked" handler="on_btn_select_tool_by_no_clicked" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -6103,20 +6116,10 @@ Date</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="lbl_space_1">
-                    <property name="width-request">90</property>
-                    <property name="height-request">56</property>
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">4</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="lbl_space_2">
+                  <object class="GtkLabel" id="lbl_replace_mode_btn">
                     <property name="width-request">90</property>
                     <property name="height-request">56</property>
                     <property name="visible">True</property>
@@ -6151,11 +6154,19 @@ F12 or $ key does the same</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="lbl_replace_mode_btn">
+                  <object class="GtkButton" id="btn_gear0">
+                    <property name="label" translatable="yes">gear0</property>
+                    <property name="use-action-appearance">False</property>
+                    <property name="name">btn_m6</property>
                     <property name="width-request">90</property>
                     <property name="height-request">56</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="image-position">top</property>
+                    <signal name="clicked" handler="on_btn_gear0_clicked" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -6164,11 +6175,19 @@ F12 or $ key does the same</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="lbl_space_3">
+                  <object class="GtkButton" id="btn_gear1">
+                    <property name="label" translatable="yes">gear1</property>
+                    <property name="use-action-appearance">False</property>
+                    <property name="name">btn_m6</property>
                     <property name="width-request">90</property>
                     <property name="height-request">56</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="image-position">top</property>
+                    <signal name="clicked" handler="on_btn_gear1_clicked" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
