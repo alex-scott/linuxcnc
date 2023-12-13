@@ -5774,7 +5774,7 @@ class gmoccapy(object):
         pinv = pin.get() if not isinstance(pin, str) else pin
         pinn = pin.name if not isinstance(pin, str) else pin
 
-        if self.popup_values[pinn] == None:
+        if not (pinn in self.popup_values) or (self.popup_values[pinn] == None):
             self.popup_values[pinn] = pinv
             return
         else:
