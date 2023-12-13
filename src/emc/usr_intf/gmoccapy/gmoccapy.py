@@ -5868,7 +5868,7 @@ class gmoccapy(object):
         pin = self.halcomp.newpin("gear.1.at-speed", hal.HAL_BIT, hal.HAL_IN)
 
         self.halcomp.newpin("gear.rps", hal.HAL_FLOAT, hal.HAL_OUT)
-        self.halcomp.newpin("gear.rps-1hz", hal.HAL_FLOAT, hal.HAL_OUT)
+        self.halcomp.newpin("gear.rpm-1hz", hal.HAL_FLOAT, hal.HAL_OUT)
         self.halcomp.newpin("gear.min-rps", hal.HAL_FLOAT, hal.HAL_OUT)
         self.halcomp.newpin("gear.max-rps", hal.HAL_FLOAT, hal.HAL_OUT)
 
@@ -6038,8 +6038,8 @@ class gmoccapy(object):
         self.halcomp['gear.v'] = v
         self.halcomp['gear.rps'] = v / 60
 
-        ## speed-in-rps / gear-rps-1hz = hz
-        self.halcomp['gear.rps-1hz'] = (v / 60 ) / 50
+        
+        self.halcomp['gear.rpm-1hz'] = ( 50 /  v ) 
         self.halcomp['gear.min-rps'] = ( 5 * v / 50 ) / 60
         self.halcomp['gear.max-rps'] = ( 80 * v / 50 ) / 60
 
