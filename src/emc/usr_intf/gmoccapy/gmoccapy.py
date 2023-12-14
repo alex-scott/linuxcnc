@@ -513,9 +513,10 @@ class gmoccapy(object):
                 self.notification.add_message(_("Error in ") + css_file + "\n" \
                     + _("Please check the console output."), ALERT_ICON)
 
+        ## alex custom
+        self.gearIdx[0] = self.prefs.getpref("gearidx0", 0, int)
+        self.gearIdx[1] = self.prefs.getpref("gearidx1", 0, int)
         self.updateGears()
-
-
 
     def _get_ini_data(self):
         self.get_ini_info = getiniinfo.GetIniInfo()
@@ -4932,6 +4933,53 @@ class gmoccapy(object):
             self.command.mode(linuxcnc.MODE_MANUAL)
             self.command.wait_complete()
 
+    def on_btn_touchoff_x_custom_click(self, widget, data=None):
+        if not self.stat.tool_in_spindle:
+            message = _("No or multiple tools selected in the tool table. ")
+            message += _("Please select only one tool in the table!")
+            self.dialogs.warning_dialog(self, _("Warning Tool Touch off not possible!"), message)
+            return
+
+        if "G41" in self.active_gcodes or "G42" in self.active_gcodes:
+            message = _("Tool touch off is not possible with cutter radius compensation switched on!\n")
+            message += _("Please emit an G40 before tool touch off.")
+            self.dialogs.warning_dialog(self, _("Warning Tool Touch off not possible!"), message)
+            return
+
+        if widget == self.widgets.lbl_offset_z:
+            axis = "z"
+        elif widget == self.widgets.lbl_offset_x:
+            axis = "x"
+        else:
+            self.dialogs.warning_dialog(self, _("Real big error!"),
+                                   _("You managed to come to a place that is not possible in on_btn_touchoff_x_custom_click"))
+            return
+
+        value = self.dialogs.entry_dialog(self, data=None,
+                                     header=_("Enter value for axis {0} to set:").format(axis.upper()),
+                                     label=_("Set parameter of tool {0:d} and axis {1} to:").format(self.stat.tool_in_spindle, axis.upper()),
+                                     integer=False)
+
+        if value == "ERROR":
+            message = _("Conversion error because of wrong entry for touch off axis {0}").format(axis.upper())
+            self.dialogs.warning_dialog(self, _("Conversion error !"), message)
+            return
+        elif value == "CANCEL":
+            return
+        else:
+            command = "G10 L10 P{0} {1}{2}".format(self.stat.tool_in_spindle, axis, value)
+            self.command.mode(linuxcnc.MODE_MDI)
+            self.command.wait_complete()
+            self.command.mdi(command)
+            self.command.wait_complete()
+            if "G43" in self.active_gcodes:
+                self.command.mdi("G43")
+                self.command.wait_complete()
+            self.command.mode(linuxcnc.MODE_MANUAL)
+            self.command.wait_complete()
+
+
+
     # select a tool entering a number
     def on_btn_select_tool_by_no_clicked(self, widget, data=None):
         value = self.dialogs.entry_dialog(self, data=None, header=_("Enter the tool number as integer "),
@@ -5877,6 +5925,7 @@ class gmoccapy(object):
         self.gearIdx[0]+=1
         if self.gearIdx[0] >= len(self.gears[0]) :
             self.gearIdx[0] = 0
+        self.prefs.putpref("gearIdx0", self.gearIdx[0], int)
         self.updateGears()
         pass
 
@@ -5884,6 +5933,7 @@ class gmoccapy(object):
         self.gearIdx[1]+=1
         if self.gearIdx[1] >= len(self.gears[1]) :
             self.gearIdx[1] = 0
+        self.prefs.putpref("gearIdx1", self.gearIdx[1], int)
         self.updateGears()
         pass
 

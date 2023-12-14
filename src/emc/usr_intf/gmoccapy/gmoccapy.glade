@@ -2159,18 +2159,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkLabel" id="lbl_offset_z">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="label" translatable="yes">offset z</property>
-                                                    <property name="width-chars">8</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left-attach">2</property>
-                                                    <property name="top-attach">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <object class="GtkLabel" id="lbl_tool_offset_z">
                                                     <property name="visible">True</property>
                                                     <property name="can-focus">False</property>
@@ -2185,18 +2173,6 @@
                                                   <packing>
                                                     <property name="left-attach">2</property>
                                                     <property name="top-attach">1</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkLabel" id="lbl_offset_x">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="label" translatable="yes">offset x</property>
-                                                    <property name="width-chars">8</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left-attach">3</property>
-                                                    <property name="top-attach">0</property>
                                                   </packing>
                                                 </child>
                                                 <child>
@@ -2242,6 +2218,32 @@
                                                     <property name="left-attach">0</property>
                                                     <property name="top-attach">2</property>
                                                     <property name="width">3</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="lbl_offset_x">
+                                                    <property name="label" translatable="yes">offset x</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">True</property>
+                                                    <property name="receives-default">True</property>
+                                                    <signal name="clicked" handler="on_btn_touchoff_x_custom_click" swapped="no"/>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left-attach">3</property>
+                                                    <property name="top-attach">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="lbl_offset_z">
+                                                    <property name="label" translatable="yes">offset z</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">True</property>
+                                                    <property name="receives-default">True</property>
+                                                    <signal name="clicked" handler="on_btn_touchoff_x_custom_click" swapped="no"/>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left-attach">2</property>
+                                                    <property name="top-attach">0</property>
                                                   </packing>
                                                 </child>
                                               </object>
