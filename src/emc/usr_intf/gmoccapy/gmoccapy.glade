@@ -6076,7 +6076,7 @@ Date</property>
                 </child>
                 <child>
                   <object class="GtkButton" id="btn_m6">
-                    <property name="label" translatable="yes">M6</property>
+                    <property name="label" translatable="yes">M6 Tx</property>
                     <property name="use-action-appearance">False</property>
                     <property name="name">btn_m6</property>
                     <property name="width-request">90</property>

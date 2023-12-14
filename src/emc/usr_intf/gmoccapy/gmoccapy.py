@@ -2500,6 +2500,9 @@ class gmoccapy(object):
     def on_hal_status_all_homed(self, widget):
         LOG.debug("Hal Status all homed")
         self.all_homed = True
+
+        self.widgets.btn_homing.hide()
+
         self.widgets.ntb_button.set_current_page(_BB_MANUAL)
         widgetlist = ["rbt_mdi", "rbt_auto", "btn_index_tool", "btn_change_tool", "btn_select_tool_by_no",
                       "btn_tool_touchoff_x", "btn_tool_touchoff_z", "btn_touch", "tbtn_switch_mode"
