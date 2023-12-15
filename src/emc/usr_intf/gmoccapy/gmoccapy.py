@@ -4931,7 +4931,7 @@ class gmoccapy(object):
             self.command.mdi(command)
             self.command.wait_complete()
             if "G43" in self.active_gcodes:
-                self.command.mdi("G43")
+                self.command.mdi("G43 H{0}".format(self.stat.tool_in_spindle) )
                 self.command.wait_complete()
             self.command.mode(linuxcnc.MODE_MANUAL)
             self.command.wait_complete()
@@ -4976,7 +4976,7 @@ class gmoccapy(object):
             self.command.mdi(command)
             self.command.wait_complete()
             if "G43" in self.active_gcodes:
-                self.command.mdi("G43")
+                self.command.mdi("G43 H{0}".format(self.stat.tool_in_spindle) )
                 self.command.wait_complete()
             self.command.mode(linuxcnc.MODE_MANUAL)
             self.command.wait_complete()
@@ -5004,6 +5004,12 @@ class gmoccapy(object):
             self.command.wait_complete()
             command = "T{0} M6".format(int(value))
             self.command.mdi(command)
+            self.command.wait_complete()
+            # alex added
+            self.command.mdi("G43 H{0}".format(int(self.stat.tool_in_spindle)))
+            self.command.wait_complete()
+            self.command.mode(linuxcnc.MODE_MANUAL)
+            self.command.wait_complete()
 
     # set tool with M61 Q? or with T? M6
     def on_btn_selected_tool_clicked(self, widget, data=None):
@@ -5027,6 +5033,11 @@ class gmoccapy(object):
             else:
                 command = "M61 Q{0}".format(tool)
             self.command.mdi(command)
+            # alex added
+            self.command.mdi("G43 H{0}".format(tool))
+            self.command.wait_complete()
+            self.command.mode(linuxcnc.MODE_MANUAL)
+            self.command.wait_complete()
         else:
             message = _("Could not understand the entered tool number. Will not change anything!")
             self.dialogs.warning_dialog(self, _("Important Warning!"), message)
