@@ -3389,15 +3389,18 @@ class gmoccapy(object):
     def _update_vel(self):
         # self.stat.program_units will return 1 for inch, 2 for mm and 3 for cm
         real_feed = float(self.stat.settings[1] * self.stat.feedrate)
-        if self.stat.program_units != 1:
+        if self.stat.program_units != 1:  ### mm or cm
             self.widgets.lbl_current_vel.set_text("{0:d}".format(int(self.stat.current_vel * 60.0 * self.faktor)))
-            if "G95" in self.active_gcodes:
-                feed_str = "{0:d}".format(int(self.stat.settings[1]))
+            if "G95" in self.active_gcodes:  ###  Units per Revolution Mode
+                feed_str = "{0:.3f}".format(int(self.stat.settings[1]))
                 real_feed_str = "F  {0:.2f}".format(real_feed)
+            elif "G93" in self.active_gcodes:  ###   Inverse Time Mode
+                feed_str = "{0:d}".format(int(self.stat.settings[1]))
+                real_feed_str = "F G93".format(real_feed)
             else:
                 feed_str = "{0:d}".format(int(self.stat.settings[1]))
                 real_feed_str = "F  {0:d}".format(int(real_feed))
-        else:
+        else: ## inch
             self.widgets.lbl_current_vel.set_text("{0:.2f}".format(self.stat.current_vel * 60.0 * self.faktor))
             if "G95" in self.active_gcodes:
                 feed_str = "{0:.4f}".format(self.stat.settings[1])
@@ -5005,11 +5008,6 @@ class gmoccapy(object):
             command = "T{0} M6".format(int(value))
             self.command.mdi(command)
             self.command.wait_complete()
-            # alex added
-            self.command.mdi("G43 H{0}".format(int(self.stat.tool_in_spindle)))
-            self.command.wait_complete()
-            self.command.mode(linuxcnc.MODE_MANUAL)
-            self.command.wait_complete()
 
     # set tool with M61 Q? or with T? M6
     def on_btn_selected_tool_clicked(self, widget, data=None):
@@ -5033,11 +5031,6 @@ class gmoccapy(object):
             else:
                 command = "M61 Q{0}".format(tool)
             self.command.mdi(command)
-            # alex added
-            self.command.mdi("G43 H{0}".format(tool))
-            self.command.wait_complete()
-            self.command.mode(linuxcnc.MODE_MANUAL)
-            self.command.wait_complete()
         else:
             message = _("Could not understand the entered tool number. Will not change anything!")
             self.dialogs.warning_dialog(self, _("Important Warning!"), message)
