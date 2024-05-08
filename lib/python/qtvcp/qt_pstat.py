@@ -419,3 +419,20 @@ class _PStat(object):
                     tmp.append(file)
 
         return tmp
+
+    def modnamefromFilename(self, fname):
+        panel = os.path.splitext(os.path.basename(os.path.basename(fname)))[0]
+        base = panel.replace('_handler','')
+        module = "{}.{}".format(base,panel)
+        return module
+
+    # tempararily adds the screen directory to path
+    # so the handler can be imported to be used for subclassing
+    def importDefaultHandler(self, module=None):
+        import importlib
+        sys.path.insert(0, self.SCREENDIR)
+        if module is None:
+            module = "{}.{}_handler".format(self.BASEPATH,self.BASEPATH)
+        mod = importlib.import_module(module, self.SCREENDIR)
+        sys.path.remove(self.SCREENDIR)
+        return mod.HandlerClass
