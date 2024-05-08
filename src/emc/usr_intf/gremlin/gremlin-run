@@ -15,7 +15,7 @@ def W(p, k, *args, **kw):
     p.add(w)
     return w
 
-class GremlinApp(Gtk.Window):
+class GremlinApp(Gtk.Plug):
     def __init__(self, inifile):
         if not inifile:
             inifile = os.environ.get('INI_FILE_NAME', None)
@@ -36,6 +36,13 @@ class GremlinApp(Gtk.Window):
         self.connect("destroy", self.quit)
 
         self.show()
+        print("SOCKET_ID=%d" % self.get_id());
+        f = open("/tmp/gremlin.plug.id", 'w')
+        f.write(str(self.get_id()))
+        f.close()
+
+
+
     def quit(self, event):
         Gtk.main_quit()
 
