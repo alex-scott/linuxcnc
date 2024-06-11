@@ -3984,20 +3984,21 @@ class gmoccapy(object):
         self.widgets.lbl_spindle_act.set_text("S {0}".format(int(round(speed * self.spindle_override))))
 
     def _update_vc(self):
-        if self.stat.spindle[0]['direction'] != 0:
-            if self.stat.spindle[0]['speed'] == 0:
-                speed = self.stat.settings[2]
-            else:
-                speed = self.stat.spindle[0]['speed']
-
-            if not self.lathe_mode:
-                diameter = self.halcomp["tool-diameter"]
-            else:
-                diameter = int(self.dro_dic["Combi_DRO_0"].get_position()[1] * 2)
-                speed = self.widgets.spindle_feedback_bar.value
-            vc = abs(int(speed * self.spindle_override) * diameter * 3.14 / 1000)
+        #if self.stat.spindle[0]['direction'] != 0:
+        if self.stat.spindle[0]['speed'] == 0:
+            speed = self.stat.settings[2]
         else:
-            vc = 0
+            speed = self.stat.spindle[0]['speed']
+
+        if not self.lathe_mode:
+            diameter = self.halcomp["tool-diameter"]
+        else:
+            diameter = int(self.dro_dic["Combi_DRO_0"].get_position()[1] * 2)
+            #speed = self.widgets.spindle_feedback_bar.value
+        #LOG.warning("joints %f %f", diameter, speed) # self.stat.joint[0]["units"], self.stat.joint_actual_position[0])
+        vc = abs(int(speed * self.spindle_override) * diameter * 3.14 / 1000)
+        #else:
+        #    vc = 0
         if vc >= 100:
             text = "Vc= {0:d}".format(int(vc))
         elif vc >= 10:
