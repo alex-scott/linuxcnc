@@ -3566,6 +3566,7 @@ class gmoccapy(object):
             self.command.wait_complete()
             self.command.mdi("G43")
             self.command.wait_complete()
+            self.command.mode(linuxcnc.MODE_MANUAL)
 
     def _set_enable_tooltips(self, value):
         LOG.debug("_set_enable_tooltips = {0}".format(value))
@@ -5018,9 +5019,9 @@ class gmoccapy(object):
             self.command.wait_complete()
             self.command.mdi(command)
             self.command.wait_complete()
-            if "G43" in self.active_gcodes:
-                self.command.mdi("G43 H{0}".format(self.stat.tool_in_spindle) )
-                self.command.wait_complete()
+            #if "G43" in self.active_gcodes:
+            #    self.command.mdi("G43 H{0}".format(self.stat.tool_in_spindle) )
+            #   self.command.wait_complete()
             self.command.mode(linuxcnc.MODE_MANUAL)
             self.command.wait_complete()
 
@@ -5093,6 +5094,10 @@ class gmoccapy(object):
             command = "T{0} M6".format(int(value))
             self.command.mdi(command)
             self.command.wait_complete()
+            if "G43" in self.active_gcodes and self.stat.task_mode != linuxcnc.MODE_AUTO:
+                self.command.mdi("G43")
+                self.command.wait_complete()
+            self.command.mode(linuxcnc.MODE_MANUAL)
 
     # set tool with M61 Q? or with T? M6
     def on_btn_selected_tool_clicked(self, widget, data=None):
