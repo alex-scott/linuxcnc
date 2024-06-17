@@ -92,12 +92,218 @@ class StatCanon(rs274.glcanon.GLCanon, rs274.interpret.StatMixin):
 
 
 
+# keyboard/navigation functions handling mixin
+class GremlinNavigationMixin(Gtk.Widget):
+    def __init__(self):
+        self.current_view = 'z'
+
+        self.select_primed = None
+
+        self.connect('motion-notify-event', self.motion)
+        self.connect('button-press-event', self.pressed)
+        self.connect('button-release-event', self.select_fire)
+        self.connect('scroll-event', self.scroll)
+
+        self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+        self.add_events(Gdk.EventMask.POINTER_MOTION_HINT_MASK)
+        #self.add_events(gdk.BUTTON_MOTION_MASK)
+        #self.add_events(gdk.EventMask.BUTTON_PRESS_MASK)
+        #self.add_events(gdk.BUTTON_RELEASE_MASK)
+        self.add_events(Gdk.EventMask.BUTTON_MOTION_MASK)
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
+        self.add_events(Gdk.EventMask.SCROLL_MASK)
+
+        self.lat = 0
+        self.minlat = -90
+        self.maxlat = 90
+
+    def set_current_view(self):
+        if self.current_view not in ['p', 'x', 'y', 'y2', 'z', 'z2']:
+            return
+        return getattr(self, 'set_view_%s' % self.current_view)()
+
+    def get_view(self):
+        view_dict = {'x':0, 'y':1, 'y2':1, 'z':2, 'z2':2, 'p':3}
+        return view_dict.get(self.current_view, 3)
+
+    def select_prime(self, x, y):
+        self.select_primed = x, y
+
+    @rs274.glcanon.with_context
+    def select_fire(self, widget, event):
+        # if program is running, do not update the line:
+        # if the user clicks in the preview,
+        # Highlighting the line can cause an error with buffer OverflowError
+        # print("DEBUG NORBERT",self.stat.state, linuxcnc.RCS_EXEC)
+        if self.stat.state == linuxcnc.RCS_EXEC:
+            return
+
+        if not self.select_primed: return
+        x, y = self.select_primed
+        self.select_primed = None
+        self.select(x, y)
+
+    def select_cancel(self, widget=None, event=None):
+        self.select_primed = None
+
+    def pressed(self, widget, event):
+        if not self.use_default_controls: return
+        button1 = event.button == 1
+        button2 = event.button == 2
+        button3 = event.button == 3
+        if button1:
+            self.select_prime(event.x, event.y)  # select G-Code element
+
+        if button3 and (event.type == Gdk.EventType._2BUTTON_PRESS):
+            self.clear_live_plotter()
+        elif button1 or button2 or button3:
+            self.startZoom(event.y)
+            self.recordMouse(event.x, event.y)
+
+    def motion(self, widget, event):
+        if not self.use_default_controls: return
+        button1 = event.state & Gdk.ModifierType.BUTTON1_MASK
+        button2 = event.state & Gdk.ModifierType.BUTTON2_MASK
+        button3 = event.state & Gdk.ModifierType.BUTTON3_MASK
+        shift = event.state & Gdk.ModifierType.SHIFT_MASK
+        # for lathe or plasmas rotation is not used, so we check for it
+        # recommended to use mode 6 for that type of machines
+        cancel = bool(self.lathe_option)
+
+        # 0 = default: left rotate, middle move, right zoom
+        if self.mouse_btn_mode == 0:
+            if button1:
+                if shift:
+                    self.translateOrRotate(event.x, event.y)
+                elif not cancel:
+                    self.set_prime(event.x, event.y)
+                    self.rotateOrTranslate(event.x, event.y)
+            elif button2:
+                self.translateOrRotate(event.x, event.y)
+            elif button3:
+                self.continueZoom(event.y)
+        # 1 = left zoom, middle move, right rotate
+        elif self.mouse_btn_mode == 1:
+            if button1:
+                if shift:
+                    self.translateOrRotate(event.x, event.y)
+                else:
+                    self.continueZoom(event.y)
+            elif button2:
+                self.translateOrRotate(event.x, event.y)
+            elif button3 and not cancel:
+                self.set_prime(event.x, event.y)
+                self.rotateOrTranslate(event.x, event.y)
+        # 2 = left move, middle rotate, right zoom
+        elif self.mouse_btn_mode == 2:
+            if button1:
+                if shift:
+                    if not cancel:
+                        self.set_prime(event.x, event.y)
+                        self.rotateOrTranslate(event.x, event.y)
+                else:
+                    self.translateOrRotate(event.x, event.y)
+            elif button2 and not cancel:
+                self.set_prime(event.x, event.y)
+                self.rotateOrTranslate(event.x, event.y)
+            elif button3:
+                self.continueZoom(event.y)
+        # 3 = left zoom, middle rotate, right move
+        elif self.mouse_btn_mode == 3:
+            if button1:
+                if shift:
+                    if not cancel:
+                        self.set_prime(event.x, event.y)
+                        self.rotateOrTranslate(event.x, event.y)
+                else:
+                    self.continueZoom(event.y)
+            elif button2 and not cancel:
+                self.set_prime(event.x, event.y)
+                self.rotateOrTranslate(event.x, event.y)
+            elif button3:
+                self.translateOrRotate(event.x, event.y)
+        # 4 = left move,   middle zoom,   right rotate
+        elif self.mouse_btn_mode == 4:
+            if button1:
+                if shift:
+                    if not cancel:
+                        self.set_prime(event.x, event.y)
+                        self.rotateOrTranslate(event.x, event.y)
+                else:
+                    self.translateOrRotate(event.x, event.y)
+            elif button2:
+                self.continueZoom(event.y)
+            elif button3 and not cancel:
+                self.set_prime(event.x, event.y)
+                self.rotateOrTranslate(event.x, event.y)
+        # 5 = left rotate, middle zoom, right move
+        elif self.mouse_btn_mode == 5:
+            if button1:
+                if shift:
+                    self.continueZoom(event.y)
+                elif not cancel:
+                    self.set_prime(event.x, event.y)
+                    self.rotateOrTranslate(event.x, event.y)
+            elif button2:
+                self.continueZoom(event.y)
+            elif button3:
+                self.translateOrRotate(event.x, event.y)
+        # 6 = left move, middle zoom, right zoom (no rotate - for 2D plasma machines or lathes)
+        elif self.mouse_btn_mode == 6:
+            if button1:
+                if shift:
+                    self.continueZoom(event.y)
+                else:
+                    self.translateOrRotate(event.x, event.y)
+            elif button2:
+                self.continueZoom(event.y)
+            elif button3:
+                self.continueZoom(event.y)
+
+    def scroll(self, widget, event):
+        if not self.use_default_controls: return
+        if event.direction == Gdk.ScrollDirection.UP:
+            self.zoomin()
+        elif event.direction == Gdk.ScrollDirection.DOWN:
+            self.zoomout()
+
+    # These are for external controlling of the view
+
+    def zoom_in(self):
+        self.zoomin()
+
+    def zoom_out(self):
+        self.zoomout()
+
+    def start_continuous_zoom(self, y):
+        self.startZoom(y)
+
+    def continuous_zoom(self, y):
+        self.continueZoom(y)
+
+    def set_mouse_start(self, x, y):
+        self.recordMouse(x, y)
+
+    def set_prime(self, x, y):
+        if self.select_primed:
+            primedx, primedy = self.select_primed
+            distance = max(abs(x - primedx), abs(y - primedy))
+            if distance > 8: self.select_cancel()
+
+    def pan(self,x,y):
+        self.translateOrRotate(x, y)
+
+    def rotate_view(self,x,y):
+        self.rotateOrTranslate(x, y)
+
+
 # Gtk is not capable of creating a "legacy" or "compatibility" context, which necessitates
 # descending to the GLX API layer to create the required context. This can only be removed
 # someday when the core drawing routines of Gremlin/AXIS are upgraded to modern OpenGL style,
 # a large undertaking.
 
-class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
+class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase, GremlinNavigationMixin):
     xlib = cdll.LoadLibrary('libX11.so')
     xlib.XOpenDisplay.argtypes = [c_char_p]
     xlib.XOpenDisplay.restype = POINTER(struct__XDisplay)
@@ -148,35 +354,14 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
 
         rs274.glcanon.GlCanonDraw.__init__(self, linuxcnc.stat(), self.logger)
 
-        self.current_view = 'z'
-
-        self.select_primed = None
+        GremlinNavigationMixin.__init__(self)
 
         self.connect_after('realize', self.realize)
         self.connect('configure_event', self.reshape)
         self.connect('map_event', self.map)
         self.connect('draw', self.expose) # expose_event was deprecated
-        self.connect('motion-notify-event', self.motion)
-        self.connect('button-press-event', self.pressed)
-        self.connect('button-release-event', self.select_fire)
-        self.connect('scroll-event', self.scroll)
-
-        self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
-        self.add_events(Gdk.EventMask.POINTER_MOTION_HINT_MASK)
-        #self.add_events(gdk.BUTTON_MOTION_MASK)
-        #self.add_events(gdk.EventMask.BUTTON_PRESS_MASK)
-        #self.add_events(gdk.BUTTON_RELEASE_MASK)
-        self.add_events(Gdk.EventMask.BUTTON_MOTION_MASK)
-        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
-        self.add_events(Gdk.EventMask.SCROLL_MASK)
- 
 
         self.fingerprint = ()
-
-        self.lat = 0
-        self.minlat = -90
-        self.maxlat = 90
 
         self.highlight_line = None
         self.program_alpha = False
@@ -216,8 +401,6 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
         glDisable(GL_LIGHTING)
         glClearColor(0,0,0,0)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-
-
 
     def activate(self):
         """make cairo context current for drawing"""
@@ -301,11 +484,6 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
         self.swapbuffers()
 
         if s.file: self.load()
-
-    def set_current_view(self):
-        if self.current_view not in ['p', 'x', 'y', 'y2', 'z', 'z2']:
-            return
-        return getattr(self, 'set_view_%s' % self.current_view)()
 
     def load(self,filename = None):
         s = self.stat
@@ -464,9 +642,6 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
     def get_show_distance_to_go(self): return self.show_dtg
     def get_grid_size(self): return self.grid_size
 
-    def get_view(self):
-        view_dict = {'x':0, 'y':1, 'y2':1, 'z':2, 'z2':2, 'p':3}
-        return view_dict.get(self.current_view, 3)
 
     def is_lathe(self): return self.lathe_option
     def is_foam(self): return self.foam_option
@@ -485,176 +660,10 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase):
 
     def get_show_offsets(self): return self.show_offsets
 
-    def select_prime(self, x, y):
-        self.select_primed = x, y
 
-    @rs274.glcanon.with_context
-    def select_fire(self, widget, event):
-        # if program is running, do not update the line:
-        # if the user clicks in the preview, 
-        # Highlighting the line can cause an error with buffer OverflowError
-        #print("DEBUG NORBERT",self.stat.state, linuxcnc.RCS_EXEC)
-        if self.stat.state == linuxcnc.RCS_EXEC:
-            return
- 
-        if not self.select_primed: return
-        x, y = self.select_primed
-        self.select_primed = None
-        self.select(x, y)
-
-    def select_cancel(self, widget=None, event=None):
-        self.select_primed = None
-
-    def pressed(self, widget, event):
-        if not self.use_default_controls:return
-        button1 = event.button == 1
-        button2 = event.button == 2
-        button3 = event.button == 3
-        if button1:
-            self.select_prime(event.x, event.y) # select G-Code element
-        
-        if button3 and (event.type == Gdk.EventType._2BUTTON_PRESS):
-            self.clear_live_plotter()
-        elif button1 or button2 or button3:
-            self.startZoom(event.y)
-            self.recordMouse(event.x, event.y)
-
-    def motion(self, widget, event):
-        if not self.use_default_controls:return
-        button1 = event.state & Gdk.ModifierType.BUTTON1_MASK
-        button2 = event.state & Gdk.ModifierType.BUTTON2_MASK
-        button3 = event.state & Gdk.ModifierType.BUTTON3_MASK
-        shift = event.state & Gdk.ModifierType.SHIFT_MASK
-        # for lathe or plasmas rotation is not used, so we check for it
-        # recommended to use mode 6 for that type of machines
-        cancel = bool(self.lathe_option)
-        
-        # 0 = default: left rotate, middle move, right zoom
-        if self.mouse_btn_mode == 0:
-            if button1:
-                if shift:
-                    self.translateOrRotate(event.x, event.y)
-                elif not cancel:
-                    self.set_prime(event.x, event.y)
-                    self.rotateOrTranslate(event.x, event.y)
-            elif button2:
-                self.translateOrRotate(event.x, event.y)
-            elif button3:
-                self.continueZoom(event.y)
-        # 1 = left zoom, middle move, right rotate
-        elif self.mouse_btn_mode == 1:
-            if button1:
-                if shift:
-                    self.translateOrRotate(event.x, event.y)
-                else:
-                    self.continueZoom(event.y)
-            elif button2:
-                self.translateOrRotate(event.x, event.y)
-            elif button3 and not cancel:
-                self.set_prime(event.x, event.y)
-                self.rotateOrTranslate(event.x, event.y)
-        # 2 = left move, middle rotate, right zoom
-        elif self.mouse_btn_mode == 2:
-            if button1:    
-                if shift:
-                    if not cancel:
-                        self.set_prime(event.x, event.y)
-                        self.rotateOrTranslate(event.x, event.y)
-                else:
-                    self.translateOrRotate(event.x, event.y)
-            elif button2 and not cancel:
-                self.set_prime(event.x, event.y)
-                self.rotateOrTranslate(event.x, event.y)
-            elif button3:
-                self.continueZoom(event.y)
-        # 3 = left zoom, middle rotate, right move
-        elif self.mouse_btn_mode == 3:
-            if button1:    
-                if shift:
-                    if not cancel:
-                        self.set_prime(event.x, event.y)
-                        self.rotateOrTranslate(event.x, event.y)
-                else:
-                    self.continueZoom(event.y)
-            elif button2 and not cancel:
-                self.set_prime(event.x, event.y)
-                self.rotateOrTranslate(event.x, event.y)
-            elif button3:
-                self.translateOrRotate(event.x, event.y)
-        # 4 = left move,   middle zoom,   right rotate
-        elif self.mouse_btn_mode == 4:
-            if button1:    
-                if shift:
-                    if not cancel:
-                        self.set_prime(event.x, event.y)
-                        self.rotateOrTranslate(event.x, event.y)
-                else:
-                    self.translateOrRotate(event.x, event.y)
-            elif button2:
-                self.continueZoom(event.y)
-            elif button3 and not cancel:
-                self.set_prime(event.x, event.y)
-                self.rotateOrTranslate(event.x, event.y)
-        # 5 = left rotate, middle zoom, right move
-        elif self.mouse_btn_mode == 5:
-            if button1:    
-                if shift:
-                    self.continueZoom(event.y)
-                elif not cancel:
-                    self.set_prime(event.x, event.y)
-                    self.rotateOrTranslate(event.x, event.y)
-            elif button2:
-                self.continueZoom(event.y)
-            elif button3:
-                self.translateOrRotate(event.x, event.y)
-        # 6 = left move, middle zoom, right zoom (no rotate - for 2D plasma machines or lathes)
-        elif self.mouse_btn_mode == 6:
-            if button1:    
-                if shift:
-                    self.continueZoom(event.y)
-                else:
-                    self.translateOrRotate(event.x, event.y)
-            elif button2:
-                self.continueZoom(event.y)
-            elif button3:
-                self.continueZoom(event.y)
-
-    def scroll(self, widget, event):
-        if not self.use_default_controls:return
-        if event.direction == Gdk.ScrollDirection.UP: self.zoomin()
-        elif event.direction == Gdk.ScrollDirection.DOWN: self.zoomout()
 
     def report_gcode_error(self, result, seq, filename):
 
         error_str = gcode.strerror(result)
         sys.stderr.write("G-Code error in " + os.path.basename(filename) + "\n" + "Near line "
                          + str(seq) + " of\n" + filename + "\n" + error_str + "\n")
-
-    # These are for external controlling of the view
-
-    def zoom_in(self):
-        self.zoomin()
-
-    def zoom_out(self):
-        self.zoomout()
-
-    def start_continuous_zoom(self, y):
-        self.startZoom(y)
-
-    def continuous_zoom(self, y):
-        self.continueZoom(y)
-
-    def set_mouse_start(self, x, y):
-        self.recordMouse(x, y)
-
-    def set_prime(self, x, y):
-        if self.select_primed:
-            primedx, primedy = self.select_primed
-            distance = max(abs(x - primedx), abs(y - primedy))
-            if distance > 8: self.select_cancel()
-
-    def pan(self,x,y):
-        self.translateOrRotate(x, y)
-
-    def rotate_view(self,x,y):
-        self.rotateOrTranslate(x, y)
