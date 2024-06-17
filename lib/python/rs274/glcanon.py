@@ -14,6 +14,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+import struct
+import sys
+
+import numpy as np
 
 from rs274 import Translated, ArcsToSegmentsMixin, OpenGLTk
 from OpenGL.GL import *
@@ -79,6 +83,7 @@ limiticon = array.array('B',
 
 class GLCanon(Translated, ArcsToSegmentsMixin):
     lineno = -1
+    time_stared = 0
     def __init__(self, colors, geometry, is_foam=0):
         # traverse list of tuples - [(line number, (start position), (end position), (tlo x, tlo y, tlo z))]
         self.traverse = []; self.traverse_append = self.traverse.append
@@ -220,6 +225,7 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         self.min_extents, self.max_extents, self.min_extents_notool, self.max_extents_notool = gcode.calc_extents(self.arcfeed, self.feed, self.traverse)
         self.unrotate_preview()
         self.min_extents_zero_rxy, self.max_extents_zero_rxy, self.min_extents_notool_zero_rxy, self.max_extents_notool_zero_rxy = gcode.calc_extents(self.preview_zero_rxy)
+        print("extents", self.min_extents_zero_rxy, self.max_extents_zero_rxy, self.min_extents_notool_zero_rxy, self.max_extents_notool_zero_rxy)
         if self.is_foam:
             min_z = min(self.foam_z, self.foam_w)
             max_z = max(self.foam_z, self.foam_w)
@@ -287,11 +293,43 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         except Exception as e:
             print(e)
 
+
+    LINE_TYPE_NONE = 0
+    LINE_TYPE_TRAVERSE = 1
+    LINE_TYPE_FEED = 2
+    LINE_TYPE_RIGID_TAP = 3
+    LINE_TYPE_ARC_SEGMENT = 4
+    LINE_TYPE_DWELL = 5
+
+    # ( x,y,z,line_type,line_no )
+    #traj_points = []
+    np_traj_datatype = np.dtype([
+        ('x', np.float32),
+        ('y', np.float32),
+        ('z', np.float32),
+        ('line_no_and_type', np.int32),  # 27 bits line# 134217728 | 5 bits line type 2^5=16
+    ])
+    # https://stackoverflow.com/questions/5064822/how-to-add-items-into-a-numpy-array/5068182#5068182
+    #traj_points = np.empty([90970869, 5], dtype=np.float32)
+    #traj_points = np.empty([90970869, 4], dtype=np_traj_datatype)
+    traj_points = np.empty([90970869+2, 4], dtype=np_traj_datatype)
+    traj_points_idx = 0
+    dump_file = "/home/alex/dev/pygl-0/linuxcnc.dump.bin"
+    #dump_file = None
+    enable_old_code = True
+    def traj_point_append(self, line_type, point):
+        # @todo check self.xo, yo zo - tool offsets
+        # @todo apply vertex9 routine
+        self.traj_points[self.traj_points_idx] = [point[0], point[1], point[2], (self.lineno << 8) | line_type ]
+        self.traj_points_idx += 1
+        #self.traj_points[self.traj_points_idx] = [ point[0], point[1], point[2], 1.0*line_type, 1.0*self.lineno ]
+
     def straight_traverse(self, x,y,z, a,b,c, u,v,w):
         if self.suppress > 0: return
         l = self.rotate_and_translate(x,y,z,a,b,c,u,v,w)
         if not self.first_move:
-                self.traverse_append((self.lineno, self.lo, l, (self.xo, self.yo, self.zo)))
+                if self.enable_old_code: self.traverse_append((self.lineno, self.lo, l, (self.xo, self.yo, self.zo)))
+        self.traj_point_append(self.LINE_TYPE_TRAVERSE if not self.first_move else self.LINE_TYPE_NONE,  l)
         self.lo = l
 
     def rigid_tap(self, x, y, z):
@@ -300,9 +338,14 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         l = self.rotate_and_translate(x,y,z,0,0,0,0,0,0)[:3]
         l += (self.lo[3], self.lo[4], self.lo[5],
                self.lo[6], self.lo[7], self.lo[8])
-        self.feed_append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
-#        self.dwells_append((self.lineno, self.colors['dwell'], x + self.offset_x, y + self.offset_y, z + self.offset_z, 0))
-        self.feed_append((self.lineno, l, self.lo, self.feedrate, (self.xo, self.yo, self.zo)))
+        if self.enable_old_code:
+            self.feed_append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+            self.dwells_append((self.lineno, self.colors['dwell'], x + self.offset_x, y + self.offset_y, z + self.offset_z, 0))
+            self.feed_append((self.lineno, l, self.lo, self.feedrate, (self.xo, self.yo, self.zo)))
+        ## tap and back
+        self.traj_point_append(self.LINE_TYPE_RIGID_TAP, l)
+        self.traj_point_append(self.LINE_TYPE_RIGID_TAP, self.lo)
+
 
     def arc_feed(self, *args):
         if self.suppress > 0: return
@@ -321,7 +364,8 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         to = (self.xo, self.yo, self.zo)
         append = self.arcfeed_append
         for l in segs:
-            append((lineno, lo, l, feedrate, to))
+            if self.enable_old_code: append((lineno, lo, l, feedrate, to))
+            self.traj_point_append(self.LINE_TYPE_ARC_SEGMENT, l)
             lo = l
         self.lo = lo
 
@@ -329,20 +373,23 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         if self.suppress > 0: return
         self.first_move = False
         l = self.rotate_and_translate(x,y,z,a,b,c,u,v,w)
-        self.feed_append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+        if self.enable_old_code: self.feed_append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+        self.traj_point_append(self.LINE_TYPE_FEED, l)
         self.lo = l
     straight_probe = straight_feed
 
     def user_defined_function(self, i, p, q):
         if self.suppress > 0: return
         color = self.colors['m1xx']
-        self.dwells_append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        if self.enable_old_code: self.dwells_append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        self.traj_point_append(self.LINE_TYPE_DWELL, self.lo)
 
     def dwell(self, arg):
         if self.suppress > 0: return
         self.dwell_time += arg
         color = self.colors['dwell']
-        self.dwells_append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        if self.enable_old_code: self.dwells_append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        self.traj_point_append(self.LINE_TYPE_DWELL, l)
 
     def highlight(self, lineno, geometry):
         glLineWidth(3)
@@ -387,6 +434,13 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         glColor3f(*self.colors[name])
 
     def draw(self, for_selection=0, no_traverse=True):
+        if not self.dump_file is None and self.traj_points_idx>0:
+            self.traj_points.resize([self.traj_points_idx, 4])
+            #self.traj_points.dump(self.dump_file)
+            self.traj_points.tofile(self.dump_file, sep='')
+            self.dump_file = None
+
+        #print(self.traj_points)
         if not no_traverse:
             self.colored_lines('traverse', self.traverse, for_selection)
         else:
@@ -397,6 +451,7 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
             glLineWidth(2)
             self.draw_dwells(self.dwells, int(self.colors.get('dwell_alpha', 1/3.)), for_selection, len(self.traverse) + len(self.feed) + len(self.arcfeed))
             glLineWidth(1)
+
 
 def with_context(f):
     def inner(self, *args, **kw):

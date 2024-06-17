@@ -15,7 +15,7 @@ def W(p, k, *args, **kw):
     p.add(w)
     return w
 
-class GremlinApp(Gtk.Plug):
+class GremlinApp(Gtk.Window):
     def __init__(self, inifile):
         if not inifile:
             inifile = os.environ.get('INI_FILE_NAME', None)
@@ -33,13 +33,11 @@ class GremlinApp(Gtk.Plug):
         self.gremlin = W(self.vbox, Gremlin, inifile)
         self.gremlin.set_size_request(400, 400)
 
+        self.gremlin.load("/home/alex/dev/linuxcnc/configs/nc_files/flowsnake.ngc")
+
         self.connect("destroy", self.quit)
 
         self.show()
-        print("SOCKET_ID=%d" % self.get_id());
-        f = open("/tmp/gremlin.plug.id", 'w')
-        f.write(str(self.get_id()))
-        f.close()
 
 
 
@@ -60,6 +58,8 @@ def usage(msg=None):
 def main():
     if len(sys.argv) == 1:
         inifilename = None
+        #alex
+        inifilename = "/home/alex/dev/linuxcnc/configs/sim/axis/axis_mm.ini"
     elif len(sys.argv) == 2:
         inifilename = sys.argv[1]
     else:
