@@ -2,6 +2,7 @@ import math
 import array, itertools
 import sys
 
+import glm
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -101,11 +102,7 @@ def pango_font_post():
     glPopAttrib()
 
 def glTranslateScene(w, s, x, y, mousex, mousey):
-    glMatrixMode(GL_MODELVIEW)
-    mat = glGetDoublev(GL_MODELVIEW_MATRIX)
-    glLoadIdentity()
-    glTranslatef(s * (x - mousex), s * (mousey - y), 0.0)
-    glMultMatrixd(mat)
+    w.mvm = glm.translate(w.mvm, glm.vec3(s * (x - mousex), s * (mousey - y), 0.0))
 
 def glRotateScene(w, s, xcenter, ycenter, zcenter, x, y, mousex, mousey):
     def snap(a):
@@ -120,19 +117,18 @@ def glRotateScene(w, s, xcenter, ycenter, zcenter, x, y, mousex, mousey):
     lat = min(w.maxlat, max(w.minlat, w.lat + (y - mousey) * .5))
     lon = (w.lon + (x - mousex) * .5) % 360
 
-    glMatrixMode(GL_MODELVIEW)
-
-    glTranslatef(xcenter, ycenter, zcenter)
-    mat = glGetDoublev(GL_MODELVIEW_MATRIX)
-
-    glLoadIdentity()
-    tx, ty, tz = mat[3][:3]
-    glTranslatef(tx, ty, tz)
-    glRotatef(snap(lat), *w.rotation_vectors[0])
-    glRotatef(snap(lon), *w.rotation_vectors[1])
-    glTranslatef(-xcenter, -ycenter, -zcenter)
+    mm = w.mvm
+    mm = glm.translate(mm, glm.vec3(xcenter, ycenter, zcenter))
+    vv = glm.vec3( mm[3][0], mm[3][1], mm[3][2] )
+    m = glm.mat4(1.0)
+    m = glm.translate(m, vv)
+    m = glm.rotate(m, snap(lat) * 0.01745329252, w.rotation_vectors[0])
+    m = glm.rotate(m, snap(lon) * 0.01745329252, w.rotation_vectors[1])
+    m = glm.translate(m, [-xcenter, -ycenter, -zcenter])
+    w.mvm = m
     w.lat = lat
     w.lon = lon
+
 
 def sub(x, y):
     return list(map(lambda a, b: a-b, x, y))
@@ -154,6 +150,12 @@ def v3distsq(a,b):
 
 class GlNavBase:
     rotation_vectors = [(1.,0.,0.), (0., 0., 1.)]
+    ## mvm -> model view matrix 4x4
+    mvm = glm.mat4(1.0)
+    vecX = glm.vec3(1, 0, 0)
+    vecY = glm.vec3(0, 1, 0)
+    vecZ = glm.vec3(0, 0, 1)
+    radian90deg = 3.1415 / 2 ## to keep code clear. glm wants angle in radians
 
     def __init__(self):
         # Current coordinates of the mouse.
@@ -263,11 +265,14 @@ class GlNavBase:
         ztran = max(2.0, e1, e2 * w/h) ** 2
         self.set_eyepoint(ztran - self.zcenter)
 
+    def _apply_view_matrix(self):
+        glMatrixMode(GL_MODELVIEW)
+        glLoadMatrixf(self.mvm.to_bytes())
+
     def reset(self):
         """Reset rotation matrix for this widget."""
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        self.mvm = glm.mat4(1.0) ## reset matrix
+        self._apply_view_matrix()
         self._redraw()
         # zero the translations - we will be recentering
         self._totalx = 0.0
@@ -305,6 +310,7 @@ class GlNavBase:
         self.activate()
         self.perspective = True
         glRotateScene(self, 0.5, self.xcenter, self.ycenter, self.zcenter, x, y, self.xmouse, self.ymouse)
+        self._apply_view_matrix()
         self._redraw()
         self.recordMouse(x, y)
 
@@ -322,6 +328,7 @@ class GlNavBase:
         scale     = abs( dist / ( 0.5 * win_height ) )
 
         glTranslateScene(self, scale, x, y, self.xmouse, self.ymouse)
+        self._apply_view_matrix()
         # keep track of all translations since view reset
         self._totalx = self._totalx + (x - self.xmouse)
         self._totaly = self._totaly - (self.ymouse - y)
@@ -335,6 +342,7 @@ class GlNavBase:
         self.lon = lon
         if forcerotate or self.perspective:
             glRotateScene(self, 0.5, self.xcenter, self.ycenter, self.zcenter, 0, 0, 0, 0)
+            self._apply_view_matrix()
         self._redraw()
 
     def get_viewangle(self):
@@ -385,67 +393,73 @@ class GlNavBase:
 
     def set_view_x(self):
         self.reset()
-        glRotatef(-90, 0, 1, 0)
-        glRotatef(-90, 1, 0, 0)
+        self.mvm *= glm.rotate(-self.radian90deg, self.vecY)
+        self.mvm *= glm.rotate(-self.radian90deg, self.vecX)
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm = glm.translate(self.mvm,
+                                 glm.vec3(-mid[0], -mid[1], -mid[2]))
         self.set_eyepoint_from_extents(size[1], size[2])
         self.perspective = False
         self.lat = -90
         self.lon = 270
+        self._apply_view_matrix()
         self._redraw()
 
     def set_view_y(self):
         self.reset()
-        glRotatef(-90, 1, 0, 0)
+        self.mvm *= glm.rotate(-self.radian90deg, self.vecX)
         if self.is_lathe():
-            glRotatef(90, 0, 1, 0)
+            self.mvm = glm.rotateY(self.mvm, 90)
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm *= glm.translate(glm.vec3(-mid[0], -mid[1], -mid[2]))
         self.set_eyepoint_from_extents(size[0], size[2])
         self.perspective = False
         self.lat = -90
         self.lon = 0
+        self._apply_view_matrix()
         self._redraw()
 
         # lathe backtool display
     def set_view_y2(self):
         self.reset()
-        glRotatef(90, 1, 0, 0)
-        glRotatef(90, 0, 1, 0)
+        self.mvm *= glm.rotate(self.radian90deg, self.vecX)
+        self.mvm *= glm.rotateY(self.radian90deg, self.vecY)
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm *= glm.translate(glm.vec3(-mid[0], -mid[1], -mid[2]))
         self.set_eyepoint_from_extents(size[0], size[2])
         self.perspective = False
         self.lat = -90
         self.lon = 0
+        self._apply_view_matrix()
         self._redraw()
 
     def set_view_z(self):
         self.reset()
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm *= glm.translate(glm.vec3(-mid[0], -mid[1], -mid[2]))
         self.set_eyepoint_from_extents(size[0], size[1])
         self.perspective = False
         self.lat = self.lon = 0
+        self._apply_view_matrix()
         self._redraw()
 
     def set_view_z2(self):
         self.reset()
-        glRotatef(-90, 0, 0, 1)
+        self.mvm *= glm.rotate(-self.radian90deg, self.vecZ)
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm *= glm.translate(glm.vec3(-mid[0], -mid[1], -mid[2]))
         self.set_eyepoint_from_extents(size[1], size[0])
         self.perspective = False
         self.lat = 0
         self.lon = 270
+        self._apply_view_matrix()
         self._redraw()
 
     def set_view_p(self):
         self.reset()
         self.perspective = True
         mid, size = self.extents_info()
-        glTranslatef(-mid[0], -mid[1], -mid[2])
+        self.mvm *= glm.translate(glm.vec3(-mid[0], -mid[1], -mid[2]))
         size = (size[0] ** 2 + size[1] ** 2 + size[2] ** 2) ** .5
         if size > 1e99: size = 5. # in case there are no moves in the preview
         w = self.winfo_width()
@@ -456,6 +470,7 @@ class GlNavBase:
         self.lat = -60
         self.lon = 335
         glRotateScene(self, 1.0, mid[0], mid[1], mid[2], 0, 0, 0, 0)
+        self._apply_view_matrix()
         self._redraw()
 
 # vim:ts=8:sts=4:sw=4:et:
