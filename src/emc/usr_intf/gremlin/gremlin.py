@@ -667,3 +667,6 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase, Gremlin
         error_str = gcode.strerror(result)
         sys.stderr.write("G-Code error in " + os.path.basename(filename) + "\n" + "Near line "
                          + str(seq) + " of\n" + filename + "\n" + error_str + "\n")
+
+
+class GremlinES: pass

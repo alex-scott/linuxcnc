@@ -1,8 +1,17 @@
 #!/usr/bin/env python
 import ctypes
-from binascii import hexlify
-
 from gcode import calc_vertex_extents
+from enum import IntEnum
+
+class TrajLineType(IntEnum):
+    NONE = 0
+    TRAVERSE = 1
+    FEED = 2
+    RIGID_TAP = 3
+    ARC_SEGMENT = 4
+    DWELL = 5
+    ## special record type inserted to change tool offsets
+    TOOLOFFSET = 254
 
 class TrajPointCtype(ctypes.Structure): ## 16 bytes
     _pack_ = 1 # disable memory align=pack
@@ -34,6 +43,12 @@ class TrajBufferChunk:
         self._last += 1
         if self._last>=self.Len: raise TrajBufferFullException
 
+    def dump(self):
+        print("======= DUMP")
+        for i in range(self._last):
+            b = self._buffer[i]
+            print(b.x, b.y, b.z, b.line_type, (b.lineno_hi * 65536 + b.lineno_lo) )
+
     _extents_cache = None
     _extents_cache_created_on = -1
     # it will return min/max values grouped by axis, then by line_type
@@ -57,39 +72,38 @@ class TrajBufferChunk:
             self._capsule = PyCapsule_New(ctypes.byref( self._buffer) , None, PyCapsule_Destructor(0))
         return self._capsule
 
-    def dump(self):
-        for i in range(self._last):
-            print(hexlify(self._buffer[i]))
-
 class TrajBuffer:
-
     def __init__(self):
         self._buffers = [TrajBufferChunk()]
         self._current = self._buffers[0]
         self._vertex_count = 0
+        self._tool_offset = (0.0, 0.0, 0.0, 0, 0)
 
     def append(self, x:float, y:float, z:float, line_type:int, line_no:int):
         try:
             self._vertex_count += 1
+            if line_type == TrajLineType.TOOLOFFSET:
+                self._tool_offset = (x, y, z, line_type, line_no)
             self._current.append(x, y, z, line_type, line_no)
         except TrajBufferFullException:
            n = TrajBufferChunk()
            self._buffers.append(n)
            self._current = n
+           n.append(*self._tool_offset) ## it is sticky will be applied to next buffer too
 
-    ## number of line_types we use in calculations
-    ## must match const RS274_GREMLIN_VERTEX_TYPE_LEN in gcodemodule.cc
-    calc_max_line_type = 8
     def calc_extents(self):
-        vmin = [ [3e33 for i in range(self.calc_max_line_type)] for i in range(3)]
-        vmax = [ [-3e33 for i in range(self.calc_max_line_type)] for i in range(3)]
+        vmin = [ 3e33 for i in range(3)]
+        vmax = [ -3e33 for i in range(3)]
+        vmint = [ 3e33 for i in range(3)]
+        vmaxt = [ -3e33 for i in range(3)]
         for b in self._buffers:
-             nmin, nmax = b.calc_extents()
+             nmin, nmax, nmint, nmaxt = b.calc_extents()
              for axis in range(3):
-                 for linetype in range(self.calc_max_line_type):
-                     vmin[axis][linetype] = min(vmin[axis][linetype], nmin[axis][linetype])
-                     vmax[axis][linetype] = max(vmax[axis][linetype], nmax[axis][linetype])
-        return vmin, vmax
+                 vmin[axis] = min(vmin[axis], nmin[axis])
+                 vmax[axis] = max(vmax[axis], nmax[axis])
+                 vmint[axis] = min(vmint[axis], nmint[axis])
+                 vmaxt[axis] = max(vmaxt[axis], nmaxt[axis])
+        return vmin, vmax, vmint, vmaxt
 
     def dump(self):
         for b in self._buffers: b.dump()
@@ -99,13 +113,11 @@ if __name__ == '__main__':
     TrajBufferChunk.Len = 3
     vb = TrajBuffer()
     vb.append(1, 2, 3, 1, 1)
+    vb.append(1, 2, 3, TrajLineType.TOOLOFFSET, 2)
     vb.append(4, 5, 6, 1, 2)
     vb.append(7, 8, 9, 0, 3)
     vb.append(10, 11, 12, 1, 4)
     vb.append(13, 14, 15, 1, 5)
     #vb.dump()
-    vmin, vmax = vb.calc_extents() ## grouped by line_type 1|0
-    fmin = [ min(aa) for aa in vmin ] ## must be [1,2,3]
-    fmax = [ max(aa) for aa in vmax ] ## must be [13,14,15]
-    print ( fmin, fmax )
+    print(vb.calc_extents())
 

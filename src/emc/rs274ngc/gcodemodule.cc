@@ -1004,18 +1004,18 @@ static PyObject *rs274_calc_extents(PyObject *self, PyObject *args) {
         min_xt, min_yt, min_zt,  max_xt, max_yt, max_zt);
 }
 
-// vertex type 0..7 are supported in gremlin vertex buffers for extents calculation
-#define RS274_GREMLIN_VERTEX_TYPE_LEN 8
-
+#define RS274_GREMLIN_NOCOUNT_MIN 128
+#define RS274_GREMLIN_TOOLOFFSET_LINE_TYPE 254
 /*  expects one or multiple tuples like (PyCapsule with pointer to buffer of vertex_struct, number of records)
-    returns min/max values of vertex.pos[] grouped by vertex.line_type                                   */
+    returns min/max values of vertex.pos[] without and with tool offsets
+    records with LINE_TYPE_NONE(0) are ignored
+ */
 static PyObject *rs274_calc_vertex_extents(PyObject *self, PyObject *args) {
-    #define MIN_GREMLIN_DEF { 3e33,3e33,3e33,3e33,3e33,3e33,3e33,3e33 }
-    #define MAX_GREMLIN_DEF { -3e33,-3e33,-3e33,-3e33,-3e33,-3e33,-3e33,-3e33 }
-    float min[3][RS274_GREMLIN_VERTEX_TYPE_LEN] = { MIN_GREMLIN_DEF,  MIN_GREMLIN_DEF,  MIN_GREMLIN_DEF, };
-    float max[3][RS274_GREMLIN_VERTEX_TYPE_LEN] = { MAX_GREMLIN_DEF,  MAX_GREMLIN_DEF,  MAX_GREMLIN_DEF, };
-    #undef MIN_GREMLIN_DEF
-    #undef MAX_GREMLIN_DEF
+    float min[3] = { 3e33, 3e33, 3e33 };// min max clean
+    float max[3] = { -3e33, -3e33, -3e33 };
+    float mint[3] = { 3e33, 3e33, 3e33 }; // min max with tool offsets`
+    float maxt[3] = { -3e33, -3e33, -3e33 };
+    float tool_offset[3] = { 0, 0, 0};
 
     typedef struct {
         float pos[3]; // 3*32 bit
@@ -1041,25 +1041,30 @@ static PyObject *rs274_calc_vertex_extents(PyObject *self, PyObject *args) {
             PyErr_SetString(PyExc_ValueError, "rs274_calc_vertex_extents: invalid capsule passed, no pointer inside");
             return NULL;
         }
+
         for (unsigned long i = 0; i<len; i++) {
             vertex_struct *ptr = & ref[i];
             int lt = ptr->line_type;
-            if (lt>=RS274_GREMLIN_VERTEX_TYPE_LEN) continue;
+            if (lt == RS274_GREMLIN_TOOLOFFSET_LINE_TYPE) {
+                tool_offset[0] = ptr->pos[0]; tool_offset[1] = ptr->pos[1];  tool_offset[2] = ptr->pos[2];
+                continue;
+            }
+            if (lt > RS274_GREMLIN_NOCOUNT_MIN) { continue; }
             for (int j=0;j<3;j++) {
-                if (ptr->pos[j]<min[j][lt]) min[j][lt] = ptr->pos[j];
-                if (ptr->pos[j]>max[j][lt]) max[j][lt] = ptr->pos[j];
+                float pj = ptr->pos[j];
+                float pjt = ptr->pos[j] + tool_offset[j];
+                if (pj<min[j]) min[j] = pj;
+                if (pj>max[j]) max[j] = pj;
+                if (pjt<mint[j]) mint[j] = pjt;
+                if (pjt>maxt[j]) maxt[j] = pjt;
             }
         }
     }
-    #define _BMIN(axis)  min[axis][0], min[axis][1], min[axis][2], min[axis][3], min[axis][4], min[axis][5], min[axis][6], min[axis][7]
-    #define _BMAX(axis)  max[axis][0], max[axis][1], max[axis][2], max[axis][3], max[axis][4], max[axis][5], max[axis][6], max[axis][7]
     return Py_BuildValue(
-        "((ffffffff)(ffffffff)(ffffffff))((ffffffff)(ffffffff)(ffffffff))",
-        _BMIN(0), _BMIN(1), _BMIN(2),
-        _BMAX(0), _BMAX(1), _BMAX(2)
+        "(fff)(fff)(fff)(fff)",
+        min[0], min[1], min[2], max[0], max[1], max[2],
+        mint[0], mint[1], mint[2], maxt[0], maxt[1], maxt[2]
     );
-    #undef _BMIN
-    #undef _BMAX
 }
 
 

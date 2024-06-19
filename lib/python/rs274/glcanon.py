@@ -26,6 +26,7 @@ import gcode
 import os
 import re
 from functools import reduce
+from trajbuffer import TrajLineType, TrajBuffer
 
 def minmax(*args):
     return min(*args), max(*args)
@@ -98,6 +99,8 @@ VP = 3
 class GLCanon(Translated, ArcsToSegmentsMixin):
     lineno = -1
     def __init__(self, colors, geometry, is_foam=0, foam_w=1.5, foam_z=0.0):
+        # new buffer
+        self.traj_buffer = TrajBuffer()
         # traverse list of tuples - [(line number, (start position), (end position), (tlo x, tlo y, tlo z))]
         self.traverse = []
         # feed list of tuples - [(line number, (start position), (end position), feedrate, (tlo x, tlo y, tlo z))]
@@ -238,6 +241,11 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         self.min_extents, self.max_extents, self.min_extents_notool, self.max_extents_notool = gcode.calc_extents(self.arcfeed, self.feed, self.traverse)
         self.unrotate_preview()
         self.min_extents_zero_rxy, self.max_extents_zero_rxy, self.min_extents_notool_zero_rxy, self.max_extents_notool_zero_rxy = gcode.calc_extents(self.preview_zero_rxy)
+        vmin, vmax, vmint, vmaxt = self.traj_buffer.calc_extents()
+        ### todo implement unrotate_preview()
+        self.min_extents, self.max_extents, self.min_extents_notool, self.max_extents_notool =  vmin, vmax, vmint, vmaxt
+        self.min_extents_zero_rxy, self.max_extents_zero_rxy, self.min_extents_notool_zero_rxy, self.max_extents_notool_zero_rxy = vmin, vmax, vmint, vmaxt
+
         if self.is_foam:
             min_z = min(self.foam_z, self.foam_w)
             max_z = max(self.foam_z, self.foam_w)
@@ -293,6 +301,7 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         self.uo = uo
         self.vo = vo
         self.wo = wo
+        self.traj_buffer.append(self.xo, self.yo, self.zo, TrajLineType.TOOLOFFSET, self.lineno)
 
     def set_spindle_rate(self, arg): pass
     def set_feed_rate(self, arg): self.feedrate = arg / 60.
@@ -305,11 +314,16 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         except Exception as e:
             print(e)
 
+
+    def traj_buffer_append(self, l, line_type):
+        self.traj_buffer.append(l[0], l[1], l[2], line_type, self.lineno)
+
     def straight_traverse(self, x,y,z, a,b,c, u,v,w):
         if self.suppress > 0: return
         l = self.rotate_and_translate(x,y,z,a,b,c,u,v,w)
         if not self.first_move:
                 self.traverse.append((self.lineno, self.lo, l, (self.xo, self.yo, self.zo)))
+        self.traj_buffer_append(l, TrajLineType.TRAVERSE if not self.first_move else TrajLineType.NONE)
         self.lo = l
 
     def rigid_tap(self, x, y, z):
@@ -319,8 +333,10 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         l += (self.lo[3], self.lo[4], self.lo[5],
                self.lo[6], self.lo[7], self.lo[8])
         self.feed.append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+        self.traj_buffer_append(l, TrajLineType.RIGID_TAP)
         # self.dwells.append((self.lineno, self.colors['dwell'], x + self.offset_x, y + self.offset_y, z + self.offset_z, 0))
         self.feed.append((self.lineno, l, self.lo, self.feedrate, (self.xo, self.yo, self.zo)))
+        self.traj_buffer_append(self.lo, TrajLineType.RIGID_TAP)
 
     def arc_feed(self, *args):
         if self.suppress > 0: return
@@ -340,6 +356,7 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         append = self.arcfeed.append
         for l in segs:
             append((lineno, lo, l, feedrate, to))
+            self.traj_buffer_append(l, TrajLineType.ARC_SEGMENT)
             lo = l
         self.lo = lo
 
@@ -348,6 +365,7 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         self.first_move = False
         l = self.rotate_and_translate(x,y,z,a,b,c,u,v,w)
         self.feed.append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+        self.traj_buffer_append(l, TrajLineType.FEED)
         self.lo = l
 
     def straight_probe(self, x,y,z, a,b,c, u,v,w):
@@ -355,18 +373,21 @@ class GLCanon(Translated, ArcsToSegmentsMixin):
         self.first_move = False
         l = self.rotate_and_translate(x,y,z,a,b,c,u,v,w)
         self.feed.append((self.lineno, self.lo, l, self.feedrate, (self.xo, self.yo, self.zo)))
+        self.traj_buffer_append(l, TrajLineType.FEED)
         self.lo = l
 
     def user_defined_function(self, i, p, q):
         if self.suppress > 0: return
         color = self.colors['m1xx']
         self.dwells.append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        self.traj_buffer_append(self.lo, TrajLineType.DWELL)
 
     def dwell(self, arg):
         if self.suppress > 0: return
         self.dwell_time += arg
         color = self.colors['dwell']
         self.dwells.append((self.lineno, color, self.lo[0], self.lo[1], self.lo[2], int(self.state.plane/10-17)))
+        self.traj_buffer_append(self.lo, TrajLineType.DWELL)
 
     def highlight(self, lineno, geometry):
         glLineWidth(3)
