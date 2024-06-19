@@ -1004,6 +1004,65 @@ static PyObject *rs274_calc_extents(PyObject *self, PyObject *args) {
         min_xt, min_yt, min_zt,  max_xt, max_yt, max_zt);
 }
 
+// vertex type 0..7 are supported in gremlin vertex buffers for extents calculation
+#define RS274_GREMLIN_VERTEX_TYPE_LEN 8
+
+/*  expects one or multiple tuples like (PyCapsule with pointer to buffer of vertex_struct, number of records)
+    returns min/max values of vertex.pos[] grouped by vertex.line_type                                   */
+static PyObject *rs274_calc_vertex_extents(PyObject *self, PyObject *args) {
+    #define MIN_GREMLIN_DEF { 3e33,3e33,3e33,3e33,3e33,3e33,3e33,3e33 }
+    #define MAX_GREMLIN_DEF { -3e33,-3e33,-3e33,-3e33,-3e33,-3e33,-3e33,-3e33 }
+    float min[3][RS274_GREMLIN_VERTEX_TYPE_LEN] = { MIN_GREMLIN_DEF,  MIN_GREMLIN_DEF,  MIN_GREMLIN_DEF, };
+    float max[3][RS274_GREMLIN_VERTEX_TYPE_LEN] = { MAX_GREMLIN_DEF,  MAX_GREMLIN_DEF,  MAX_GREMLIN_DEF, };
+    #undef MIN_GREMLIN_DEF
+    #undef MAX_GREMLIN_DEF
+
+    typedef struct {
+        float pos[3]; // 3*32 bit
+        char line_type; // 8 bit
+        char lineno[3]; // 24 bit
+    } __attribute__((packed)) vertex_struct;
+
+    if (sizeof(vertex_struct) != 16) {
+        PyErr_SetString(PyExc_ValueError, "rs274_calc_vertex_extents: sizeof(float)!=4 or sizeof(char)!=1 on this platform");
+        return NULL;
+    }
+    for(int ii=0; ii<PySequence_Length(args); ii++) {
+        PyObject *si = PyTuple_GetItem(args, ii);
+        PyObject *capsule;
+        unsigned long len = -1;
+        int r = PyArg_ParseTuple(si, "Ok:rs274_calc_vertex_extents", &capsule, &len);
+        if (!r || !PyCapsule_CheckExact(capsule)) {
+            PyErr_SetString(PyExc_ValueError, "invalid argument, not a (PyCapsule,int)");
+            return NULL;
+        }
+        vertex_struct *ref = (vertex_struct *)PyCapsule_GetPointer(capsule, NULL);
+        if (!ref) {
+            PyErr_SetString(PyExc_ValueError, "rs274_calc_vertex_extents: invalid capsule passed, no pointer inside");
+            return NULL;
+        }
+        for (unsigned long i = 0; i<len; i++) {
+            vertex_struct *ptr = & ref[i];
+            int lt = ptr->line_type;
+            if (lt>=RS274_GREMLIN_VERTEX_TYPE_LEN) continue;
+            for (int j=0;j<3;j++) {
+                if (ptr->pos[j]<min[j][lt]) min[j][lt] = ptr->pos[j];
+                if (ptr->pos[j]>max[j][lt]) max[j][lt] = ptr->pos[j];
+            }
+        }
+    }
+    #define _BMIN(axis)  min[axis][0], min[axis][1], min[axis][2], min[axis][3], min[axis][4], min[axis][5], min[axis][6], min[axis][7]
+    #define _BMAX(axis)  max[axis][0], max[axis][1], max[axis][2], max[axis][3], max[axis][4], max[axis][5], max[axis][6], max[axis][7]
+    return Py_BuildValue(
+        "((ffffffff)(ffffffff)(ffffffff))((ffffffff)(ffffffff)(ffffffff))",
+        _BMIN(0), _BMIN(1), _BMIN(2),
+        _BMAX(0), _BMAX(1), _BMAX(2)
+    );
+    #undef _BMIN
+    #undef _BMAX
+}
+
+
 static bool get_attr(PyObject *o, const char *attr_name, int *v) {
     PyObject *attr = PyObject_GetAttrString(o, attr_name);
     if(attr && PyLong_CheckAndError(attr_name, attr)) {
@@ -1166,6 +1225,8 @@ static PyMethodDef gcode_methods[] = {
         "Convert a numeric error to a string"},
     {"calc_extents", (PyCFunction)rs274_calc_extents, METH_VARARGS,
         "Calculate information about extents of gcode"},
+    {"calc_vertex_extents", (PyCFunction)rs274_calc_vertex_extents, METH_VARARGS,
+        "Calculate information about vertex extents grouped by vertex line_type"},
     {"arc_to_segments", (PyCFunction)rs274_arc_to_segments, METH_VARARGS,
         "Convert an arc to straight segments"},
     {NULL}
