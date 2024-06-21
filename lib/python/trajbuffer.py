@@ -10,8 +10,18 @@ class TrajLineType(IntEnum):
     RIGID_TAP = 3
     ARC_SEGMENT = 4
     DWELL = 5
-    ## special record type inserted to change tool offsets
-    TOOLOFFSET = 254
+
+    ## special record types inserted to set offsets
+    TOOL_OFFSET = 254
+    G9x_OFFSET = 253
+    G5x_OFFSET = 252
+    XY_ROTATION = 251
+    SPINDLE_SPEED = 250
+    FEED_RATE = 249
+
+    @staticmethod
+    def isSticky(lineType):
+        return lineType>=240
 
 class TrajPointCtype(ctypes.Structure): ## 16 bytes
     _pack_ = 1 # disable memory align=pack
@@ -47,7 +57,7 @@ class TrajBufferChunk:
         print("======= DUMP")
         for i in range(self._last):
             b = self._buffer[i]
-            print(b.x, b.y, b.z, b.line_type, (b.lineno_hi * 65536 + b.lineno_lo) )
+            print(b.x, b.y, b.z, TrajLineType(ord(b.line_type)), (b.lineno_hi * 65536 + b.lineno_lo) )
 
     _extents_cache = None
     _extents_cache_created_on = -1
@@ -73,23 +83,27 @@ class TrajBufferChunk:
         return self._capsule
 
 class TrajBuffer:
+
+
     def __init__(self):
         self._buffers = [TrajBufferChunk()]
         self._current = self._buffers[0]
         self._vertex_count = 0
         self._tool_offset = (0.0, 0.0, 0.0, 0, 0)
+        self._sticky = {} ## offset points saved to re-insert into next chunk
 
     def append(self, x:float, y:float, z:float, line_type:int, line_no:int):
         try:
             self._vertex_count += 1
-            if line_type == TrajLineType.TOOLOFFSET:
-                self._tool_offset = (x, y, z, line_type, line_no)
+            if TrajLineType.isSticky(line_type):
+                self._sticky[line_type]  = (x, y, z, line_type, line_no)
             self._current.append(x, y, z, line_type, line_no)
         except TrajBufferFullException:
            n = TrajBufferChunk()
            self._buffers.append(n)
            self._current = n
-           n.append(*self._tool_offset) ## it is sticky will be applied to next buffer too
+           # re-insert current offsets to start of next chunk
+           for _,v in self._sticky.items(): n.append(*v)
 
     def calc_extents(self):
         vmin = [ 3e33 for i in range(3)]
@@ -113,7 +127,7 @@ if __name__ == '__main__':
     TrajBufferChunk.Len = 3
     vb = TrajBuffer()
     vb.append(1, 2, 3, 1, 1)
-    vb.append(1, 2, 3, TrajLineType.TOOLOFFSET, 2)
+    vb.append(1, 2, 3, TrajLineType.TOOL_OFFSET, 2)
     vb.append(4, 5, 6, 1, 2)
     vb.append(7, 8, 9, 0, 3)
     vb.append(10, 11, 12, 1, 4)

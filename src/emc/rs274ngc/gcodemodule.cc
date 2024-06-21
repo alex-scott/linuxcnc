@@ -1049,6 +1049,7 @@ static PyObject *rs274_calc_vertex_extents(PyObject *self, PyObject *args) {
                 tool_offset[0] = ptr->pos[0]; tool_offset[1] = ptr->pos[1];  tool_offset[2] = ptr->pos[2];
                 continue;
             }
+            if (lt == 0) { continue; }
             if (lt > RS274_GREMLIN_NOCOUNT_MIN) { continue; }
             for (int j=0;j<3;j++) {
                 float pj = ptr->pos[j];

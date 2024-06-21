@@ -669,4 +669,5 @@ class Gremlin(Gtk.DrawingArea,rs274.glcanon.GlCanonDraw,glnav.GlNavBase, Gremlin
                          + str(seq) + " of\n" + filename + "\n" + error_str + "\n")
 
 
-class GremlinES: pass
+class GremlinES(Gremlin):
+    _x = 0

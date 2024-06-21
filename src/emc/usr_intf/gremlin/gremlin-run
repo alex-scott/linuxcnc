@@ -7,7 +7,7 @@ import sys
 import os
 
 import linuxcnc
-from gremlin import Gremlin
+from gremlin import Gremlin, GremlinES
 
 def W(p, k, *args, **kw):
     w = k(*args, **kw)
@@ -30,7 +30,7 @@ class GremlinApp(Gtk.Window):
         Gtk.Window.__init__(self)
 
         self.vbox = W(self, Gtk.VBox)
-        self.gremlin = W(self.vbox, Gremlin, inifile)
+        self.gremlin = W(self.vbox, GremlinES, inifile)
         self.gremlin.set_size_request(400, 400)
 
         self.connect("destroy", self.quit)
