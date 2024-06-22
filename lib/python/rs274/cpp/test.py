@@ -65,14 +65,18 @@ class MinimalCanon(object):
     def get_block_delete(self):
         return 0
 
+    def get_optimized_callbackp(self):
+        return {
+            #"get_block_delete" : None
+        }
 
-# canon = MinimalCanon()
-# canon.parameter_file = "/home/alex/dev/linuxcnc/configs/sim/axis/sim_mm.var"
-# fn = "/home/alex/dev/test3.ngc"
-# result, seq = gcode.parse(fn, canon, "G0", "G21")
-# print("finished", result, seq)
 
-v = fastcanon.Fastcanon()
-v.first = "111"
+canon = MinimalCanon()
+canon.parameter_file = "/home/alex/dev/linuxcnc/configs/sim/axis/sim_mm.var"
+fn = "/home/alex/dev/test3.ngc"
+result, seq = gcode.parse(fn, canon, "G0", "G21")
+print("finished", result, seq)
 
-print(v.first)
+#v = fastcanon.Fastcanon()
+#v.first = "111"
+#print(v.first)
