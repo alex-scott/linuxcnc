@@ -4,7 +4,7 @@
 
 typedef struct {
     PyObject_HEAD
-            PyObject *first; /* first name */
+    PyObject *first; /* first name */
     PyObject *last;  /* last name */
     int number;
 } FastcanonObject;
@@ -159,7 +159,8 @@ static PyMethodDef Fastcanon_methods[] = {
 
 static PyTypeObject FastcanonType = {
         PyVarObject_HEAD_INIT(NULL, 0)
-                .tp_name = "fastcanon.Fastcanon",
+
+        .tp_name = "fastcanon.Fastcanon",
         .tp_basicsize = sizeof(FastcanonObject),
         .tp_itemsize = 0,
         .tp_dealloc = (destructor) Fastcanon_dealloc,

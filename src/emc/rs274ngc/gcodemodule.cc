@@ -961,27 +961,26 @@ static PyObject *parse_file(PyObject *self, PyObject *args, PyObject *kwargs) {
     char *f; // filename to parse
     char *unitcode=0, *initcode=0, *interpname=0;
     PyObject *initcodes=0;
-    PyObject *callbackp_dict=0;
     int error_line_offset = 0;
     struct timeval t0, t1;
     int wait = 1;
 
-    static const char *kwlist_newparse[] = {"", "", "", "", "callbackp", NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "sOO!|s$O:new-parse", (char**)kwlist_newparse,
-            &f, &callback, &PyList_Type, &initcodes, &interpname, &callbackp_dict))
+    if(!PyArg_ParseTuple(args, "sOO!|s:new-parse",
+                         &f, &callback, &PyList_Type, &initcodes, &interpname))
     {
         initcodes = nullptr;
         PyErr_Clear();
-        static const char *kwlist_parse[] = {"", "", "", "", "", "callbackp", NULL};
-        if(!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|sss$O:parse", (char**)kwlist_parse,
-                &f, &callback, &unitcode, &initcode, &interpname, &callbackp_dict))
+        if(!PyArg_ParseTuple(args, "sO|sss:parse",
+                             &f, &callback, &unitcode, &initcode, &interpname))
             return NULL;
     }
 
-    callbackp = {}; // zero struct
+    callbackp = {};
+    PyObject *callbackp_dict = PyObject_CallMethod(callback, (char*)"get_optimized_callbackp", (char*)"");
     if (callbackp_dict) {
         if (!PyDict_Check(callbackp_dict)) {
-            PyErr_Format(PyExc_RuntimeError,"callbackp arg must be dict");
+            PyErr_Format(PyExc_RuntimeError, "callbackp arg must be dict");
+            Py_DECREF(callbackp_dict);
             return NULL;
         }
         int failed = 0;
@@ -1013,10 +1012,12 @@ static PyObject *parse_file(PyObject *self, PyObject *args, PyObject *kwargs) {
         _INIT_CALLBACKP(check_abort);
 #undef _INIT_CALLBACKP
         if (failed) {
-            PyErr_Format(PyExc_RuntimeError,"all callbackp item values must be valid PyCapsule pointers");
+            PyErr_Format(PyExc_RuntimeError, "all callbackp item values must be valid PyCapsule pointers");
             return NULL;
         }
+        Py_DECREF(callbackp_dict);
     }
+
 
     if(pinterp) {
         delete pinterp;
